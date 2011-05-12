@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<meta charset="utf-8" />
+<title>WebSocket Test</title>
+<script language="javascript" type="text/javascript">
+var wsUri = "ws://10.1.10.188:9091/";
+var output;
+
+function init() {
+    output = document.getElementById("output");
+    testWebSocket();
+}
+
+function testWebSocket() { 
+    websocket = new WebSocket(wsUri);
+    websocket.onopen = function(evt) { onOpen(evt) }; 
+    websocket.onclose = function(evt) { onClose(evt) };
+    websocket.onmessage = function(evt) { onMessage(evt) };
+    websocket.onerror = function(evt) { onError(evt) }; }
+    function onOpen(evt) { 
+        writeToScreen("CONNECTED");
+    }
+    function onClose(evt) {
+        writeToScreen("DISCONNECTED");
+    }
+    function onMessage(evt) {
+        writeToScreen('<span style="color: blue;">RESPONSE: ' + JSON.parse(evt.data)+'</span>');
+    }
+    function onError(evt) {
+        writeToScreen('<span style="color: red;">ERROR:</span> ' + evt.data);
+    }
+    function doSend(message) {
+        writeToScreen("SENT: " + message); 
+        websocket.send(message);
+    }
+    function submit(){
+        if(document.getElementById('inputText').value==''){return;}
+        
+        doSend(JSON.stringify(['/message',document.getElementById('inputText').value]));
+        document.getElementById('inputText').value='';
+    }
+    function writeToScreen(message) {
+        var pre = document.createElement("p");
+        pre.style.wordWrap = "break-word";
+        pre.innerHTML = message;
+        output.appendChild(pre);
+    }
+    window.addEventListener("load", init, false);
+</script>
+
+<h2>WebSocket Test</h2>
+
+<div id="input" style='float: left; width: 50%;'>
+    <input type=text id='inputText'></input><br>
+    <input type=submit onclick='submit();' value='submit'></input>
+</div>
+
+<div id="output" style='float: right; width: 50%;'></div> 
+
+</html>
