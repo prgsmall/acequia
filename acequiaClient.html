@@ -1,0 +1,32 @@
+<html>
+    <head>
+        <script src='acequiaClient.js'></script>
+        <script type='text/javascript'>
+            acConnect(function(){
+                acSend('','/connect',['tie372']);
+            });
+            
+            acReceive(function(from,command,body){
+                switch(command){
+                    case '/connect':
+                        if(body[0]<0){
+                            alert('ERROR logging in');
+                        }
+                        else{
+                            alert('login successful.');
+                            acSend('','/getClients');
+                        }
+                    break;
+                    
+                    case '/getClients':
+                        alert('Currently connected clients: '+body);
+                    break;
+                }
+            });
+        </script>
+    </head>
+    
+    <body>
+    
+    </body>
+</html>
