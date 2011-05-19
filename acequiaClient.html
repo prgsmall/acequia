@@ -2,7 +2,8 @@
     <head>
         <script src='acequiaClient.js'></script>
         <script type='text/javascript'>
-            acConnect(function(){
+            //TODO: have the correct server address be automatically obtained.
+            acConnect('ws://192.168.0.80:9091',function(){
                 acSend('','/connect',['tie372']);
             });
             

@@ -1,5 +1,5 @@
-function acConnect(callback){
-    webSocket=new WebSocket("ws://192.168.0.80:9091");
+function acConnect(uri,callback){
+    webSocket=new WebSocket(uri);
     dataCallback=null;
     
     webSocket.onopen=function(evt){
