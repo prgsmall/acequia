@@ -16,7 +16,7 @@ Connects to the websocket server specified by 'uri' and executes 'callback' when
 
 
 acSend(to,title,body);
-	to:         string containing username of intended recipient.  examples: "userid", ""
+	to:		string containing username of intended recipient.  examples: "userid", ""
 	title:		string containing title of message to be sent.  example: "/connect"
 	body:		array containing message data.  example: ["string",142.76,"another string"]
 

@@ -3,34 +3,34 @@
 
 //Imports and 'globals'.
 var sys=require('sys'),
-		http=require('http'),
-		URL=require('url'),
-		net=require('net'),
-		osc=require('./libs/osc.js'),
-		ws=require('./libs/ws/ws/server.js'),
-		dgram=require('dgram'),
-        netIP=require('./libs/netIP.js'),
-        DEBUG=1,
-		INTERNAL_IP='',
-		OSC_PORT=9090,
-		WS_PORT=9091,
-		HTTP_PORT=9092,
-		TCP_PORT=9093,
-        TIMEOUT=600; //Seconds before kicking idle clients.
+    http=require('http'),
+    URL=require('url'),
+    net=require('net'),
+    osc=require('./libs/osc.js'),
+    ws=require('./libs/ws/ws/server.js'),
+    dgram=require('dgram'),
+    netIP=require('./libs/netIP.js'),
+    DEBUG=1,
+    INTERNAL_IP='',
+    OSC_PORT=9090,
+    WS_PORT=9091,
+    HTTP_PORT=9092,
+    TCP_PORT=9093,
+    TIMEOUT=600; //Seconds before kicking idle clients.
 
 
 //Client array structure.
 var clients=[],
-		TYP_OSC=0,
-		TYP_WS=1,
-		USER_PROTOCOL=0,		//Which protocol they're using (see above constants).
-		USER_NAME=1,            //The unique username of this client.
-        USER_WS_ID=2,			//If they are a ws client, we only need their id (no ip/port required).
-		USER_IP=2,				//The client's ip.
-		USER_PORT_IN=3,			//The port used as a lookup when receiving a message from a client.  ('in' should be used when RECEIVING a message).
-		USER_PORT_OUT=4,		//The port the client is listening on, so we can send to the right port.  ('out' should be used when sending OUT a message).
-        USER_LAST_MSG=5,		//The time at which the last message was received.  It if exceeds a certain number, the client is dropped (use ping/keepalive packets).
-        nextClientId=0;
+    TYP_OSC=0,
+    TYP_WS=1,
+    USER_PROTOCOL=0,		//Which protocol they're using (see above constants).
+    USER_NAME=1,            //The unique username of this client.
+    USER_WS_ID=2,			//If they are a ws client, we only need their id (no ip/port required).
+    USER_IP=2,				//The client's ip.
+    USER_PORT_IN=3,			//The port used as a lookup when receiving a message from a client.  ('in' should be used when RECEIVING a message).
+    USER_PORT_OUT=4,		//The port the client is listening on, so we can send to the right port.  ('out' should be used when sending OUT a message).
+    USER_LAST_MSG=5,		//The time at which the last message was received.  It if exceeds a certain number, the client is dropped (use ping/keepalive packets).
+    nextClientId=0;
 
 
 var oscServer,wsServer;

@@ -1,0 +1,6 @@
+Acequia
+-------
+
+Protocol-apathetic node-js message router.
+
+Currently supports Open Sound Control (OSC) and WebSockets.
