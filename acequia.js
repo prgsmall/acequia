@@ -45,7 +45,7 @@ function msgRec(from,to,title,body,tt){
     
     switch(title){
         default:
-            msgSnd(to,title,body,tt);
+            msgSnd(to,from,title,body,tt);
         break;
     }
 }
@@ -58,10 +58,11 @@ function debug(str){
 
 
 //Utility function for sending an osc message to a given client.
-function msgSndOsc(client,mesid,data,tt){
-    var oscMsg=osc.newOsc(mesid,tt,data),
+function msgSndOsc(to,from,title,body,tt){
+    var data=[from].concat(body),
+        oscMsg=osc.newOsc(title,'s'+tt,data),
         buffer=osc.oscToBuffer(oscMsg);
-    oscServer.send(buffer,0,buffer.length,clients[client][USER_PORT_OUT],clients[client][USER_IP]);
+    oscServer.send(buffer,0,buffer.length,clients[to][USER_PORT_OUT],clients[to][USER_IP]);
 }
 
 
@@ -183,8 +184,9 @@ function start(){
                 default:
                     var from=lookupClient(TYP_OSC,rinfo.address,rinfo.port),
                         to=oscMsg.data.shift(),
+                        title=oscMsg.address,
                         tt=oscMsg.typeTags.slice(1);
-                    msgRec(from,to,osgMsg.data,tt);
+                    msgRec(from,to,title,osgMsg.data,tt);
                 break;
             }
         });
