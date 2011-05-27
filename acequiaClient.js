@@ -21,6 +21,11 @@ function acConnect(uri,callback){
 }
 
 
+function acDisconnect(){
+    acSend('','/disconnect');
+}
+
+
 function acSend(to,title,body){
     if(!(body instanceof Array)){body=new Array(body);}
     webSocket.send(JSON.stringify({"to":to,"title":title,"body":body}));
