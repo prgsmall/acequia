@@ -45,7 +45,7 @@ function msgRec(from,to,title,body,tt){
     
     switch(title){
         default:
-            msgSnd(to,from,title,body,tt);
+            msgSnd(to,clients[from][USER_NAME],title,body,tt);
         break;
     }
 }
@@ -74,11 +74,11 @@ function msgSndWs(to,from,title,body){
 
 //The master sending function which takes a message meant for a client, decides which protocol to use, and calls the appropriate function.
 function msgSnd(to,from,title,body,tt){
-    if(to==''){return;}
+    if(to==-1){return;}
     switch(clients[to][USER_PROTOCOL]){
         case TYP_OSC:
             msgSndOsc(to,from,title,body,tt);
-            //debug("Sent message "+mesid+" to client #"+to);
+            debug("Sent message "+title+" to client #"+to);
         break;
         
         case TYP_WS:
@@ -119,6 +119,18 @@ function lookupClient(protocol,var1,var2){
                 }
             }
         break;
+    }
+    return -1;
+}
+
+
+//Looks up a client based on username.
+function lookupClientUsername(usr){
+    var i;
+    for(i=0; i<clients.length; i++){
+        if(clients[i][USER_NAME]==usr){
+            return i;
+        }
     }
     return -1;
 }
@@ -189,7 +201,7 @@ function start(){
                 
                 default:
                     var from=lookupClient(TYP_OSC,rinfo.address,rinfo.port),
-                        to=oscMsg.data.shift(),
+                        to=lookupClientUsername(oscMsg.data.shift()),
                         title=oscMsg.address,
                         tt=oscMsg.typeTags.slice(1);
                     msgRec(from,to,title,osgMsg.data,tt);
@@ -225,7 +237,7 @@ function start(){
             con.addListener('message',function(msg){
                 var message=JSON.parse(msg),
                     from=lookupClient(TYP_WS,con.id),
-                    to=message.to,
+                    to=lookupClientUsername(message.to),
                     title=message.title,
                     body=message.body;
                 
