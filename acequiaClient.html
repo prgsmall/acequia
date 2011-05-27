@@ -4,7 +4,7 @@
         <script type='text/javascript'>
             //TODO: have the correct server address be automatically obtained.
             acConnect('ws://192.168.0.80:9091',function(){
-                acSend('','/connect',['tie372']);
+                acSend('','/connect','tie372');
             });
             
             acReceive(function(from,command,body){
