@@ -143,7 +143,6 @@ function kickIdle(){
     for(i=0; i<clients.length; i++){
         if((time-clients[i][USER_LAST_MSG])>TIMEOUT*1000){
             dropClient(i,'timeout');
-            nextClientId--;
             i--;
         }
     }
@@ -153,6 +152,7 @@ function kickIdle(){
 //Drops a client from the server (they disconnect, timeout, error, etc.)
 function dropClient(client,reason){
     clients.splice(client,1);
+    nextClientId--;
     debug('Dropped client #'+client+' from server.  ('+reason+')');
 }
 
@@ -197,6 +197,10 @@ function start(){
                     clients[nextClientId][USER_LAST_MSG]=(new Date()).getTime();
                     nextClientId++;
                     debug('New OSC client ('+rinfo.address+':'+rinfo.port+', client #'+(nextClientId-1)+')');
+                break;
+                
+                case "/disconnect":
+                    dropClient(lookupClient(TYP_OSC,rinfo.address,rinfo.port),"disconnect by user");
                 break;
                 
                 default:
@@ -258,6 +262,10 @@ function start(){
                         nextClientId++;
                         msgSndWs(nextClientId-1,"SYS","/connect",1);
                         debug('New WS client (ws id '+con.id+', client #'+(nextClientId-1)+'['+clients[nextClientId-1][USER_NAME]+'])');
+                    break;
+                    
+                    case "/disconnect":
+                        dropClient(from,"disconnect by user.");
                     break;
                     
                     case "/getClients":
