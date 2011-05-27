@@ -7,6 +7,5 @@ Allow sending to a list of clients, or possibly a broadcast to all clients.
 Add 'webSocket address' parameter to clients so two websocket clients can communicate directly rather than going through acequia.  Empty string for not supported or a uri if a server is listening.
 Automatic obtaining of server IP.  (Sort of already implemented, just AJAX plasticSarcastic/nodejs/scrJoinServer.php).
 Resurrect HTTP server.
-Support for OSC bundles.
 Finish up Java OSC client.
 Resurrect TCP server.
