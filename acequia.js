@@ -149,13 +149,19 @@ function dropClient(client,reason){
 function start(){
     
     //First, we need to get our internal IP, by parsing ifconfig:
-    netIP.getNetworkIP(function(error,ip){
-        INTERNAL_IP=ip;
+    if(process.argv.length>2){
+        INTERNAL_IP=process.argv[2];
         startServers();
-        if(error){
-            console.log('error:', error);
-        }
-    },false);
+    }
+    else{
+        netIP.getNetworkIP(function(error,ip){
+            INTERNAL_IP=ip;
+            startServers();
+            if(error){
+                console.log('error:', error);
+            }
+        },false);
+    }
 
 
     //Once we actually get our internal IP, we start the servers.
