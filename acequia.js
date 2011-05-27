@@ -39,7 +39,7 @@ var oscServer,wsServer;
 //Message routing goes here.
 function msgRec(from,to,title,body,tt){
     var time; time=(new Date()).getTime();
-    debug('Received message "'+title+'" from client #'+from+'('+clients[from][USER_NAME]+')');
+    debug('Received message '+title+' from client #'+from+' ('+clients[from][USER_NAME]+')');
     if(from==-1){return;}
     clients[from][USER_LAST_MSG]=time;
     
@@ -78,14 +78,13 @@ function msgSnd(to,from,title,body,tt){
     switch(clients[to][USER_PROTOCOL]){
         case TYP_OSC:
             msgSndOsc(to,from,title,body,tt);
-            debug("Sent message "+title+" to client #"+to);
         break;
         
         case TYP_WS:
             msgSndWs(to,from,title,body);
-            debug("Sent message "+title+" to client #"+to);
         break;
     }
+    debug("Sent message "+title+" to client #"+to+" ("+clients[to][USER_NAME]+")");
 }
 
 
@@ -153,7 +152,7 @@ function kickIdle(){
 function dropClient(client,reason){
     clients.splice(client,1);
     nextClientId--;
-    debug('Dropped client #'+client+' from server.  ('+reason+')');
+    debug('Dropped client #'+client+' ('+clients[client][USER_NAME]+') from server.  ('+reason+')');
 }
 
 
@@ -170,7 +169,7 @@ function start(){
             INTERNAL_IP=ip;
             startServers();
             if(error){
-                console.log('error:', error);
+                console.log('error:',error);
             }
         },false);
     }
@@ -196,7 +195,7 @@ function start(){
                     else{clients[nextClientId][USER_PORT_OUT]=rinfo.port;}
                     clients[nextClientId][USER_LAST_MSG]=(new Date()).getTime();
                     nextClientId++;
-                    debug('New OSC client ('+rinfo.address+':'+rinfo.port+', client #'+(nextClientId-1)+')');
+                    debug('Added client '+oscMsg.data[0]+' (OSC@'+rinfo.address+':'+rinfo.port+', client #'+(nextClientId-1)+')');
                 break;
                 
                 case "/disconnect":
@@ -261,7 +260,7 @@ function start(){
                         clients[nextClientId][USER_LAST_MSG]=(new Date()).getTime();
                         nextClientId++;
                         msgSndWs(nextClientId-1,"SYS","/connect",1);
-                        debug('New WS client (ws id '+con.id+', client #'+(nextClientId-1)+'['+clients[nextClientId-1][USER_NAME]+'])');
+                        debug('Added client '+clients[nextClientId-1][USER_NAME]+' (ws id '+con.id+', client #'+(nextClientId-1)+')');
                     break;
                     
                     case "/disconnect":
@@ -289,7 +288,7 @@ function start(){
         });
 
         wsServer.addListener('listening',function(){
-            debug('wsServer is listening on '+INTERNAL_IP+":"+WS_PORT);
+            debug(' wsServer is listening on '+INTERNAL_IP+":"+WS_PORT);
         });
         
         //"Finalize" websocket server.
