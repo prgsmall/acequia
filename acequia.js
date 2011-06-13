@@ -150,6 +150,7 @@ function kickIdle(){
 
 //Drops a client from the server (they disconnect, timeout, error, etc.)
 function dropClient(client,reason){
+    if(clients[client]===undefined){return;}
     debug('Dropped client #'+client+' ('+clients[client][USER_NAME]+') from server.  ('+reason+')');
     clients.splice(client,1);
     nextClientId--;
