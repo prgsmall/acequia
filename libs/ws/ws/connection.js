@@ -39,6 +39,7 @@ function Connection(manager, options, req, socket, upgradeHead){
 
   if(connection._options.debug){
     debug = function () {
+        console.log("yo");
       util.error('\033[90mWS: ' + Array.prototype.join.call(arguments, ", ") + "\033[39m");
       process.stdout.flush();
     };
@@ -172,7 +173,6 @@ var write = function(connection, data, encoding) {
 };
 
 var close = function(connection) {
-  connection._socket.flush();
   connection._socket.end();
   connection._socket.destroy();
   debug(connection.id, "socket closed");
