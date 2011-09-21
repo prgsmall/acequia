@@ -202,7 +202,7 @@ function startServers() {
     wsServer.addListener('connection', function (con) {
         debug("connection");
         con.addListener('message', function (msg) {
-            debug("message received " + msg);
+            debug("message");
             
             var message = JSON.parse(msg),
                 from = lookupClient(ac.TYP_WS, con.id),
@@ -263,6 +263,14 @@ function startServers() {
 
     wsServer.addListener('listening', function () {
         debug('wsServer is listening on ' + INTERNAL_IP + ":" + WS_PORT);
+    });
+    
+    wsServer.addListener('attach', function (con) {
+        debug('attach');
+    });
+    
+    wsServer.addListener('detach', function (con) {
+        debug('detach');
     });
     
     wsServer.listen(WS_PORT);
