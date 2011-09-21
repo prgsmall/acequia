@@ -97,7 +97,8 @@ function msgRec(from, to, title, body, tt) {
     }
 }
 
-//Often we only know the IP and Port of the sender of a message.  This function translates this data into a 'usable' client ID number.
+// Often we only know the IP and Port of the sender of a message.  
+// This function translates this data into a 'usable' client ID number.
 function lookupClient(protocol, var1, var2) {
     var i;
     for (i = 0; i < clients.length; i += 1) {
@@ -109,7 +110,7 @@ function lookupClient(protocol, var1, var2) {
 }
 
 
-//Looks up a client based on username.
+// Looks up a client based on username.
 function lookupClientUsername(usr) {
     var i;
     for (i = 0; i < clients.length; i += 1) {
@@ -200,13 +201,14 @@ function startServers() {
     wsServer = ws.createServer();
     wsServer.addListener('connection', function (con) {
         con.addListener('message', function (msg) {
+            debug("message received " + msg);
+            
             var message = JSON.parse(msg),
                 from = lookupClient(ac.TYP_WS, con.id),
                 to = lookupClientUsername(message.to),
                 title = message.title,
                 body = message.body;
             
-            debug("message received " + msg);
             
             switch (title) {
             case "/connect":
@@ -262,7 +264,6 @@ function startServers() {
         debug('wsServer is listening on ' + INTERNAL_IP + ":" + WS_PORT);
     });
     
-    //"Finalize" websocket server.
     wsServer.listen(WS_PORT);
 
     setInterval(kickIdle, 1000);
