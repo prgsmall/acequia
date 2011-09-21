@@ -9,6 +9,10 @@ var sys = require('sys'),
     ws = require('./libs/ws/ws/server.js'),
     dgram = require('dgram'),
     netIP = require('./libs/netIP.js'),
+    ac = require("./client.js");
+
+var TYP_OSC = 0,
+    TYP_WS = 1,
     DEBUG = 1,
     INTERNAL_IP = '',
     OSC_PORT = 9090,
@@ -18,26 +22,15 @@ var sys = require('sys'),
     TIMEOUT = 600; //Seconds before kicking idle clients.
 
 
-//Client array structure.
-var clients = [],
-    TYP_OSC = 0,
-    TYP_WS = 1,
-    USER_PROTOCOL = 0,      //Which protocol they're using (see above constants).
-    USER_NAME = 1,            //The unique username of this client.
-    USER_WS_ID = 2,         //If they are a ws client, we only need their id (no ip/port required).
-    USER_IP = 2,                //The client's ip.
-    USER_PORT_IN = 3,           //The port used as a lookup when receiving a message from a client.  ('in' should be used when RECEIVING a message).
-    USER_PORT_OUT = 4,      //The port the client is listening on, so we can send to the right port.  ('out' should be used when sending OUT a message).
-    USER_LAST_MSG = 5,      //The time at which the last message was received.  It if exceeds a certain number, the client is dropped (use ping/keepalive packets).
-    nextClientId = 0;
-
+// Client array structure.
+var clients = [];
 
 var oscServer, wsServer;
 
 //Logs str to the console if the 'global' debug is set to 1.
 function debug(str) {
     if (DEBUG) {
-        console.log('[' + (new Date()).getTime() + '] ' + str);
+        console.log('[' + (new Date()) + '] ' + str);
     }
 }
 
@@ -46,13 +39,13 @@ function msgSndOsc(to, from, title, body, tt) {
     var data = [from].concat(body),
         oscMsg = osc.newOsc(title, 's' + tt, data),
         buffer = osc.oscToBuffer(oscMsg);
-    oscServer.send(buffer, 0, buffer.length, clients[to][USER_PORT_OUT], clients[to][USER_IP]);
+    oscServer.send(buffer, 0, buffer.length, clients[to].portOut, clients[to].ip);
 }
 
 
 //Utility function for sending a websocket message to a given client.
 function msgSndWs(to, from, title, body) {
-    wsServer.send(clients[to][USER_WS_ID], JSON.stringify({'from' : from, 'title' : title, 'body' : body}));
+    wsServer.send(clients[to].id, JSON.stringify({'from' : from, 'title' : title, 'body' : body}));
 }
 
 
@@ -61,7 +54,8 @@ function msgSnd(to, from, title, body, tt) {
     if (to === -1) { 
         return; 
     }
-    switch (clients[to][USER_PROTOCOL]) {
+    
+    switch (clients[to].protocol) {
     case TYP_OSC:
         msgSndOsc(to, from, title, body, tt);
         break;
@@ -70,7 +64,7 @@ function msgSnd(to, from, title, body, tt) {
         msgSndWs(to, from, title, body);
         break;
     }
-    debug("Sent message " + title + " to client #" + to + " (" + clients[to][USER_NAME] + ")");
+    debug("Sent message " + title + " to client #" + to + " (" + clients[to].name + ")");
 }
 
 //The master function which sends messages to all clients except for exc.
@@ -86,11 +80,11 @@ function msgSndAll(exc, mesid, data, tt) {
 //Message routing goes here.
 function msgRec(from, to, title, body, tt) {
     var time = (new Date()).getTime();
-    debug('Received message ' + title + ' from client #' + from + ' (' + clients[from][USER_NAME] + ')');
+    debug('Received message ' + title + ' from client #' + from + ' (' + clients[from].name + ')');
     if (from === -1) { 
         return;
     }
-    clients[from][USER_LAST_MSG] = time;
+    clients[from].lastMessage = time;
     
     switch (title) {
     case "place-holder":
@@ -98,7 +92,7 @@ function msgRec(from, to, title, body, tt) {
     case "place-holder2":
         break;
     default:
-        msgSnd(to, clients[from][USER_NAME], title, body, tt);
+        msgSnd(to, clients[from].name, title, body, tt);
         break;
     }
 }
@@ -109,8 +103,8 @@ function lookupClient(protocol, var1, var2) {
     switch (protocol) {
     case TYP_OSC:
         for (i = 0; i < clients.length; i += 1) {
-            if (clients[i][USER_PROTOCOL] === TYP_OSC) {
-                if (clients[i][USER_IP] === var1 && clients[i][USER_PORT_IN] === var2) { 
+            if (clients[i].protocol === TYP_OSC) {
+                if (clients[i].ip === var1 && clients[i].portIn === var2) { 
                     return i; 
                 }
             }
@@ -119,8 +113,8 @@ function lookupClient(protocol, var1, var2) {
     
     case TYP_WS:
         for (i = 0; i < clients.length; i += 1) {
-            if (clients[i][USER_PROTOCOL] === TYP_WS) {
-                if (clients[i][USER_WS_ID] === var1) { 
+            if (clients[i].protocol === TYP_WS) {
+                if (clients[i].id === var1) { 
                     return i; 
                 }
             }
@@ -135,7 +129,7 @@ function lookupClient(protocol, var1, var2) {
 function lookupClientUsername(usr) {
     var i;
     for (i = 0; i < clients.length; i += 1) {
-        if (clients[i][USER_NAME] === usr) {
+        if (clients[i].name === usr) {
             return i;
         }
     }
@@ -147,9 +141,8 @@ function dropClient(client, reason) {
     if (typeof(clients[client]) === "undefined") {
         return;
     }
-    debug('Dropped client #' + client + ' (' + clients[client][USER_NAME] + ') from server.  (' + reason + ')');
+    debug('Dropped client #' + client + ' (' + clients[client].name + ') from server.  (' + reason + ')');
     clients.splice(client, 1);
-    nextClientId -= 1;
 }
 
 //Kicks any clients who we have not heard from for a while.
@@ -157,7 +150,7 @@ function kickIdle() {
     var time = (new Date()).getTime(), i;
     
     for (i = 0; i < clients.length; i += 1) {
-        if ((time - clients[i][USER_LAST_MSG]) > TIMEOUT * 1000) {
+        if ((time - clients[i].lastMessage) > TIMEOUT * 1000) {
             dropClient(i, 'timeout');
             i -= 1;
         }
@@ -185,7 +178,7 @@ function start() {
     // Once we actually get our internal IP, we start the servers.
     function startServers() {
         
-        var i, oscMsg, from, to, title, tt,
+        var i, oscMsg, from, to, title, tt, client, portOut,
         httpClient, request, clientList;
     
         //OSC Server.
@@ -195,22 +188,12 @@ function start() {
             
             switch (oscMsg.address) {
             case "/connect":
-                //If they send us the connect message, add them to the list of clients.
-                clients[nextClientId] = [];
-                clients[nextClientId][USER_PROTOCOL] = TYP_OSC;
-                clients[nextClientId][USER_NAME] = oscMsg.data[0];
-                clients[nextClientId][USER_IP] = rinfo.address;
-                clients[nextClientId][USER_PORT_IN] = rinfo.port;
-                if (oscMsg.data[1] > 0) {
-                     //the second parameter when logging in is an optional 'port to send to'.
-                    clients[nextClientId][USER_PORT_OUT] = oscMsg.data[1];
-                } else {
-                    clients[nextClientId][USER_PORT_OUT] = rinfo.port;
-                }
-                clients[nextClientId][USER_LAST_MSG] = (new Date()).getTime();
-                nextClientId += 1;
+                //the second parameter when logging in is an optional 'port to send to'.
+                portOut = (oscMsg.data[1] > 0) ? oscMsg.data[1] : rinfo.port;
+                client = new ac.OSCClient(oscMsg.data[0], rinfo.address, rinfo.port, portOut, TYP_OSC);
+                clients.push(client);
                 debug('Added client ' + oscMsg.data[0] + 
-                      ' (OSC@' + rinfo.address + ':' + rinfo.port + ', client #' + (nextClientId - 1) + ')');
+                      ' (OSC@' + rinfo.address + ':' + rinfo.port + ', client #' + (clients.length - 1) + ')');
                 break;
             
             case "/disconnect":
@@ -258,25 +241,25 @@ function start() {
                     title = message.title,
                     body = message.body;
                 
+                debug("message received " + msg);
+                
                 switch (title) {
                 case "/connect":
                     //Add them to the clients list when they connect if the username is free.
                     for (i = 0; i < clients.length; i += 1) {
-                        if (clients[i][USER_NAME] === body[0]) {
+                        if (clients[i].name === body[0]) {
                             wsServer.send(con.id, 
                                 JSON.stringify({'from' : 'SYS', 'title' : '/connect', 'body' : [-1]}));
                             return;
                         }
                     }
-                    clients[nextClientId] = [];
-                    clients[nextClientId][USER_PROTOCOL] = TYP_WS;
-                    clients[nextClientId][USER_NAME] = body[0];
-                    clients[nextClientId][USER_WS_ID] = con.id;
-                    clients[nextClientId][USER_LAST_MSG] = (new Date()).getTime();
-                    nextClientId += 1;
-                    msgSndWs(nextClientId - 1, "SYS", "/connect", 1);
-                    debug('Added client ' + clients[nextClientId - 1][USER_NAME] + 
-                          ' (ws id ' + con.id + ', client #' + (nextClientId - 1) + ')');
+
+                    client = new ac.WebSocketClient(body[0], con.id, TYP_WS);
+                    clients.push(client);
+                    
+                    msgSndWs(clients.length - 1, "SYS", "/connect", 1);
+                    debug('Added client ' + clients[clients.length - 1].name + 
+                          ' (ws id ' + con.id + ', client #' + (clients.length - 1) + ')');
                     break;
                 
                 case "/disconnect":
@@ -286,7 +269,7 @@ function start() {
                 case "/getClients":
                     clientList = [];
                     for (i = 0; i < clients.length; i += 1) {
-                        clientList.push(clients[i][USER_NAME]);
+                        clientList.push(clients[i].name);
                     }
                     msgSndWs(from, "SYS", "/getClients", clientList);
                     break;
@@ -296,16 +279,20 @@ function start() {
                     break;
                 }
             });
+            
+            con.addListener('close', function () {
+                dropClient(lookupClient(TYP_WS, con.id), "connection closed");
+            });
+
+            con.addListener('timeout', function () {
+                dropClient(lookupClient(TYP_WS, con.id), "connection timeout");
+            });
+
+            con.addListener('error', function (e) {
+                dropClient(lookupClient(TYP_WS, con.id), "connection error: " + e);
+            });
         });
 
-        wsServer.addListener('close', function (con) {
-            debug(con.id + " left.");
-        });
-
-        wsServer.addListener('detach', function (con) {
-            debug(con.id + " detached");
-        });
-        
         wsServer.addListener('listening', function () {
             debug('wsServer is listening on ' + INTERNAL_IP + ":" + WS_PORT);
         });
@@ -313,48 +300,6 @@ function start() {
         //"Finalize" websocket server.
         wsServer.listen(WS_PORT);
 
-        
-        
-        //The next two servers are under construction and are technically not part of the server yet.
-        
-        //HTTP server.
-        /*http.createServer(function (req,res) {
-            var pathName=URL.parse(req.url,true).pathname;
-            console.log("HTTP server received "+pathName);
-            res.writeHead("200",{'Content-type':'text/plain'});
-            switch (pathName) {
-                case "/connect":
-                    //Not sure if these will be real clients yet.
-                break;
-            }
-            res.end("\n");
-        }).listen(HTTP_PORT);
-        debug("httpServer is listening on "+INTERNAL_IP+":"+HTTP_PORT);
-
-
-        //Raw TCP server:
-        var tcpStream;
-        var tcpServer=net.createServer(function (stream) {
-            tcpStream=stream;
-            stream.setEncoding('utf8');
-            stream.on('connect', function (rinfo) {
-                clients[nextClientId]=[];
-                clients[nextClientId][USER_PROTOCOL]=TYP_TCP;
-                clients[nextClientId][USER_IP]=rinfo.address;
-                clients[nextClientId][USER_PORT]=rinfo.port;
-                clients[netxClientId][USER_NAME]=''; //authentication.
-                clients[nextClientId][USER_LAST_MSG]=(new Date()).getTime();
-                nextClientId += 1;
-            });
-            stream.on('data', function (data) {
-                //Figure out who sent it and pipe to the routing function.
-                console.log("Received the following message from "+stream.remoteAddress+":");
-                console.log(data);
-            });
-        }).listen(TCP_PORT,INTERNAL_IP);
-        debug("tcpServer is listening on "+INTERNAL_IP+":"+TCP_PORT);
-        */
-        
         setInterval(kickIdle, 1000);
     }
 }
