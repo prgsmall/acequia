@@ -11,9 +11,7 @@ var sys = require('sys'),
     netIP = require('./libs/netIP.js'),
     ac = require("./client.js");
 
-var TYP_OSC = 0,
-    TYP_WS = 1,
-    DEBUG = 1,
+var DEBUG = 1,
     INTERNAL_IP = '',
     OSC_PORT = 9090,
     WS_PORT = 9091,
@@ -22,7 +20,7 @@ var TYP_OSC = 0,
     TIMEOUT = 600; //Seconds before kicking idle clients.
 
 
-// Client array structure.
+// The list of clients
 var clients = [];
 
 var oscServer, wsServer;
@@ -37,8 +35,9 @@ function debug(str) {
 //Utility function for sending an osc message to a given client.
 function msgSndOsc(to, from, title, body, tt) {
     var data = [from].concat(body),
-        oscMsg = osc.newOsc(title, 's' + tt, data),
-        buffer = osc.oscToBuffer(oscMsg);
+    oscMsg = osc.newOsc(title, 's' + tt, data),
+    buffer = osc.oscToBuffer(oscMsg);
+    
     oscServer.send(buffer, 0, buffer.length, clients[to].portOut, clients[to].ip);
 }
 
@@ -49,18 +48,19 @@ function msgSndWs(to, from, title, body) {
 }
 
 
-//The master sending function which takes a message meant for a client, decides which protocol to use, and calls the appropriate function.
+// The master sending function which takes a message meant for a client, decides 
+// which protocol to use, and calls the appropriate function.
 function msgSnd(to, from, title, body, tt) {
     if (to === -1) { 
         return; 
     }
     
     switch (clients[to].protocol) {
-    case TYP_OSC:
+    case ac.TYP_OSC:
         msgSndOsc(to, from, title, body, tt);
         break;
     
-    case TYP_WS:
+    case ac.TYP_WS:
         msgSndWs(to, from, title, body);
         break;
     }
@@ -77,7 +77,7 @@ function msgSndAll(exc, mesid, data, tt) {
     }
 }
 
-//Message routing goes here.
+// Message routing goes here.
 function msgRec(from, to, title, body, tt) {
     var time = (new Date()).getTime();
     debug('Received message ' + title + ' from client #' + from + ' (' + clients[from].name + ')');
@@ -100,26 +100,10 @@ function msgRec(from, to, title, body, tt) {
 //Often we only know the IP and Port of the sender of a message.  This function translates this data into a 'usable' client ID number.
 function lookupClient(protocol, var1, var2) {
     var i;
-    switch (protocol) {
-    case TYP_OSC:
-        for (i = 0; i < clients.length; i += 1) {
-            if (clients[i].protocol === TYP_OSC) {
-                if (clients[i].ip === var1 && clients[i].portIn === var2) { 
-                    return i; 
-                }
-            }
+    for (i = 0; i < clients.length; i += 1) {
+        if (clients[i].equals(protocol, var1, var2)) {
+            return i; 
         }
-        break;
-    
-    case TYP_WS:
-        for (i = 0; i < clients.length; i += 1) {
-            if (clients[i].protocol === TYP_WS) {
-                if (clients[i].id === var1) { 
-                    return i; 
-                }
-            }
-        }
-        break;
     }
     return -1;
 }
@@ -190,18 +174,18 @@ function start() {
             case "/connect":
                 //the second parameter when logging in is an optional 'port to send to'.
                 portOut = (oscMsg.data[1] > 0) ? oscMsg.data[1] : rinfo.port;
-                client = new ac.OSCClient(oscMsg.data[0], rinfo.address, rinfo.port, portOut, TYP_OSC);
+                client = new ac.OSCClient(oscMsg.data[0], rinfo.address, rinfo.port, portOut);
                 clients.push(client);
                 debug('Added client ' + oscMsg.data[0] + 
                       ' (OSC@' + rinfo.address + ':' + rinfo.port + ', client #' + (clients.length - 1) + ')');
                 break;
             
             case "/disconnect":
-                dropClient(lookupClient(TYP_OSC, rinfo.address, rinfo.port), "disconnect by user");
+                dropClient(lookupClient(ac.TYP_OSC, rinfo.address, rinfo.port), "disconnect by user");
                 break;
             
             default:
-                from = lookupClient(TYP_OSC, rinfo.address, rinfo.port);
+                from = lookupClient(ac.TYP_OSC, rinfo.address, rinfo.port);
                 to = lookupClientUsername(oscMsg.data.shift());
                 title = oscMsg.address;
                 tt = oscMsg.typeTags.slice(1);
@@ -236,7 +220,7 @@ function start() {
         wsServer.addListener('connection', function (con) {
             con.addListener('message', function (msg) {
                 var message = JSON.parse(msg),
-                    from = lookupClient(TYP_WS, con.id),
+                    from = lookupClient(ac.TYP_WS, con.id),
                     to = lookupClientUsername(message.to),
                     title = message.title,
                     body = message.body;
@@ -254,7 +238,7 @@ function start() {
                         }
                     }
 
-                    client = new ac.WebSocketClient(body[0], con.id, TYP_WS);
+                    client = new ac.WebSocketClient(body[0], con.id);
                     clients.push(client);
                     
                     msgSndWs(clients.length - 1, "SYS", "/connect", 1);
@@ -281,15 +265,15 @@ function start() {
             });
             
             con.addListener('close', function () {
-                dropClient(lookupClient(TYP_WS, con.id), "connection closed");
+                dropClient(lookupClient(ac.TYP_WS, con.id), "connection closed");
             });
 
             con.addListener('timeout', function () {
-                dropClient(lookupClient(TYP_WS, con.id), "connection timeout");
+                dropClient(lookupClient(ac.TYP_WS, con.id), "connection timeout");
             });
 
             con.addListener('error', function (e) {
-                dropClient(lookupClient(TYP_WS, con.id), "connection error: " + e);
+                dropClient(lookupClient(ac.TYP_WS, con.id), "connection error: " + e);
             });
         });
 

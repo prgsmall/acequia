@@ -1,8 +1,9 @@
 <html>
     <head>
+        <title>Acequia Client Test Page</title>
         <script src='acequiaClient.js'></script>
         <script type='text/javascript'>
-            acequiaClient.connect('ws://localhost:9091', "user",
+            acequiaClient.connect('ws://localhost:9091', "user" + Math.random().toString(),
                 function (from, command, body) {
                     switch (command){
                     case '/connect':
