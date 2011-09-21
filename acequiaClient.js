@@ -1,16 +1,26 @@
 /*global WebSocket*/
 
+/**
+ * Creates an event callback by wrapping the object with a closure.
+ * @param {Object} obj The object the wrap with a closure.
+ * @param {String} func The name of the object's function to call.
+ * @return {Function} The callback function.
+ */
 var objCallback = function (obj, func) {
     return function () {
         obj[func].apply(obj, arguments);
     };
 };    
 
-
+/**
+ * Class to define the outgoing messages from the acequia client.
+ * @param {String} to
+ */
 function AcequiaMessage(to, title, body) {
-    this.to = to;
+    this.to = (typeof(to) === "undefined") ? "" : to;
     this.title = title;
-    this.body = (body instanceof Array) ? body : [body];
+    this.body = (typeof(body) === "undefined") ? [] : 
+                ((body instanceof Array) ? body : [body]);
 }
 
 AcequiaMessage.prototype.toString = function () {
@@ -37,16 +47,16 @@ var acequiaClient = {
     },
     
     disconnect: function () {
-        this.send('', '/disconnect');
+        this.send('/disconnect');
     },
 
-    send: function (to, title, body) {
+    send: function (title, body, to) {
         var msg = new AcequiaMessage(to, title, body);
         this.webSocket.send(msg.toString());
     },
 
     ws_onopen : function (evt) {
-        this.send('', '/connect', this.userName);
+        this.send('/connect', this.userName);
     },
     
     ws_onclose: function (evt) {
