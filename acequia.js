@@ -5,9 +5,9 @@ var sys = require('sys'),
     http = require('http'),
     URL = require('url'),
     net = require('net'),
+    dgram = require('dgram'),
     osc = require('./libs/osc.js'),
     ws = require('./libs/ws/ws/server.js'),
-    dgram = require('dgram'),
     netIP = require('./libs/netIP.js'),
     ac = require("./client.js");
 

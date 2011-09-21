@@ -31,11 +31,13 @@ var getNetworkIP = (function () {
             var ips = [];
             // extract IPs
             var matches = stdout.match(filterRE);
-            // JS has no lookbehind REs, so we need a trick
-            for (var i = 0; i < matches.length; i++) {
-                ips.push(matches[i].replace(filterRE, '$1'));
+            if (matches) {
+                // JS has no lookbehind REs, so we need a trick
+                for (var i = 0; i < matches.length; i++) {
+                    ips.push(matches[i].replace(filterRE, '$1'));
+                }
             }
-
+            
             // filter BS
             for (var i = 0, l = ips.length; i < l; i++) {
                 if (!ignoreRE.test(ips[i])) {
