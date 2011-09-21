@@ -2,28 +2,24 @@
     <head>
         <script src='acequiaClient.js'></script>
         <script type='text/javascript'>
-            //TODO: have the correct server address be automatically obtained.
-            acConnect('ws://localhost:9091',function(){
-                acSend('','/connect','tie372');
-            });
-            
-            acReceive(function(from,command,body){
-                switch(command){
+            acequiaClient.connect('ws://localhost:9091', "user",
+                function (from, command, body) {
+                    switch (command){
                     case '/connect':
-                        if(body[0] < 0){
+                        if (body[0] < 0) {
                             alert('ERROR logging in: ' + body);
-                        }
-                        else{
+                        } else {
                             alert('login successful.');
-                            acSend('','/getClients');
+                            acequiaClient.send('', '/getClients');
                         }
-                    break;
+                        break;
                     
                     case '/getClients':
-                        alert('Currently connected clients: '+body);
-                    break;
+                        alert('Currently connected clients: ' + body);
+                        break;
+                    }
                 }
-            });
+            );
         </script>
     </head>
     

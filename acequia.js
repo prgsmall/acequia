@@ -1,6 +1,6 @@
 /*global console process require setInterval*/
 
-//Imports and 'globals'.
+// Imports and 'globals'.
 var sys = require('sys'),
     http = require('http'),
     URL = require('url'),
@@ -299,11 +299,15 @@ function start() {
         });
 
         wsServer.addListener('close', function (con) {
-            console.log(con.id + " left.");
+            debug(con.id + " left.");
         });
 
+        wsServer.addListener('detach', function (con) {
+            debug(con.id + " detached");
+        });
+        
         wsServer.addListener('listening', function () {
-            debug(' wsServer is listening on ' + INTERNAL_IP + ":" + WS_PORT);
+            debug('wsServer is listening on ' + INTERNAL_IP + ":" + WS_PORT);
         });
         
         //"Finalize" websocket server.
