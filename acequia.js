@@ -200,6 +200,7 @@ function startServers() {
     //Websocket server:
     wsServer = ws.createServer();
     wsServer.addListener('connection', function (con) {
+        debug("connection");
         con.addListener('message', function (msg) {
             debug("message received " + msg);
             
