@@ -141,7 +141,135 @@ function kickIdle() {
     }
 }
 
-// The exported function is called to start the server.  It starts a server for each individual protocol.
+// Once we actually get our internal IP, we start the servers.
+function startServers() {
+    var i, oscMsg, from, to, title, tt, client, portOut,
+    httpClient, request, clientList;
+
+    //OSC Server.
+    oscServer = dgram.createSocket('udp4');
+    oscServer.on('message', function (msg, rinfo) {
+        oscMsg = osc.bufferToOsc(msg);
+        
+        switch (oscMsg.address) {
+        case "/connect":
+            //the second parameter when logging in is an optional 'port to send to'.
+            portOut = (oscMsg.data[1] > 0) ? oscMsg.data[1] : rinfo.port;
+            client = new ac.OSCClient(oscMsg.data[0], rinfo.address, rinfo.port, portOut);
+            clients.push(client);
+            debug('Added client ' + oscMsg.data[0] + 
+                  ' (OSC@' + rinfo.address + ':' + rinfo.port + ', client #' + (clients.length - 1) + ')');
+            break;
+        
+        case "/disconnect":
+            dropClient(lookupClient(ac.TYP_OSC, rinfo.address, rinfo.port), "disconnect by user");
+            break;
+        
+        default:
+            from = lookupClient(ac.TYP_OSC, rinfo.address, rinfo.port);
+            to = lookupClientUsername(oscMsg.data.shift());
+            title = oscMsg.address;
+            tt = oscMsg.typeTags.slice(1);
+            msgRec(from, to, title, oscMsg.data, tt);
+            break;
+        }
+    });
+    
+    // This is the bit of code that tells plasticSarcastic what ip and port we are.  
+    // Essentially our authentication/auto-discovery method for right now.
+    oscServer.on('listening', function () {
+        debug('oscServer is listening on ' + oscServer.address().address + ':' + oscServer.address().port);
+        
+        httpClient = http.createClient('80', 'plasticsarcastic.com');
+        request = httpClient.request('GET', '/nodejs/scrCreateServer.php?ip=' + INTERNAL_IP + '&port=' + OSC_PORT, {'host' : 'plasticsarcastic.com'});
+        request.end();
+        request.on('response', function (response) {
+            response.setEncoding('utf8');
+            response.on('data', function (txt) {
+                if (txt === '0') {
+                    throw new Error("Couldn't create server.\n");
+                }
+            });
+        });
+    });
+
+    //"Finalize" the OSC server.
+    oscServer.bind(OSC_PORT, INTERNAL_IP);
+
+    //Websocket server:
+    wsServer = ws.createServer();
+    wsServer.addListener('connection', function (con) {
+        con.addListener('message', function (msg) {
+            var message = JSON.parse(msg),
+                from = lookupClient(ac.TYP_WS, con.id),
+                to = lookupClientUsername(message.to),
+                title = message.title,
+                body = message.body;
+            
+            debug("message received " + msg);
+            
+            switch (title) {
+            case "/connect":
+                //Add them to the clients list when they connect if the username is free.
+                for (i = 0; i < clients.length; i += 1) {
+                    if (clients[i].name === body[0]) {
+                        wsServer.send(con.id, 
+                            JSON.stringify({'from' : 'SYS', 'title' : '/connect', 'body' : [-1]}));
+                        return;
+                    }
+                }
+
+                client = new ac.WebSocketClient(body[0], con.id);
+                clients.push(client);
+                
+                msgSndWs(clients.length - 1, "SYS", "/connect", 1);
+                debug('Added client ' + clients[clients.length - 1].name + 
+                      ' (ws id ' + con.id + ', client #' + (clients.length - 1) + ')');
+                break;
+            
+            case "/disconnect":
+                dropClient(from, "disconnect by user.");
+                break;
+            
+            case "/getClients":
+                clientList = [];
+                for (i = 0; i < clients.length; i += 1) {
+                    clientList.push(clients[i].name);
+                }
+                msgSndWs(from, "SYS", "/getClients", clientList);
+                break;
+
+            default:
+                msgRec(from, to, title, body);
+                break;
+            }
+        });
+        
+        con.addListener('close', function () {
+            dropClient(lookupClient(ac.TYP_WS, con.id), "connection closed");
+        });
+
+        con.addListener('timeout', function () {
+            dropClient(lookupClient(ac.TYP_WS, con.id), "connection timeout");
+        });
+
+        con.addListener('error', function (e) {
+            dropClient(lookupClient(ac.TYP_WS, con.id), "connection error: " + e);
+        });
+    });
+
+    wsServer.addListener('listening', function () {
+        debug('wsServer is listening on ' + INTERNAL_IP + ":" + WS_PORT);
+    });
+    
+    //"Finalize" websocket server.
+    wsServer.listen(WS_PORT);
+
+    setInterval(kickIdle, 1000);
+}
+
+// The exported function is called to start the server.  
+// It starts a server for each individual protocol.
 function start() {
     
     //First, we need to get our internal IP, by parsing ifconfig:
@@ -156,135 +284,6 @@ function start() {
                 console.log('error:', error);
             }
         }, false);
-    }
-
-
-    // Once we actually get our internal IP, we start the servers.
-    function startServers() {
-        
-        var i, oscMsg, from, to, title, tt, client, portOut,
-        httpClient, request, clientList;
-    
-        //OSC Server.
-        oscServer = dgram.createSocket('udp4');
-        oscServer.on('message', function (msg, rinfo) {
-            oscMsg = osc.bufferToOsc(msg);
-            
-            switch (oscMsg.address) {
-            case "/connect":
-                //the second parameter when logging in is an optional 'port to send to'.
-                portOut = (oscMsg.data[1] > 0) ? oscMsg.data[1] : rinfo.port;
-                client = new ac.OSCClient(oscMsg.data[0], rinfo.address, rinfo.port, portOut);
-                clients.push(client);
-                debug('Added client ' + oscMsg.data[0] + 
-                      ' (OSC@' + rinfo.address + ':' + rinfo.port + ', client #' + (clients.length - 1) + ')');
-                break;
-            
-            case "/disconnect":
-                dropClient(lookupClient(ac.TYP_OSC, rinfo.address, rinfo.port), "disconnect by user");
-                break;
-            
-            default:
-                from = lookupClient(ac.TYP_OSC, rinfo.address, rinfo.port);
-                to = lookupClientUsername(oscMsg.data.shift());
-                title = oscMsg.address;
-                tt = oscMsg.typeTags.slice(1);
-                msgRec(from, to, title, oscMsg.data, tt);
-                break;
-            }
-        });
-        
-        // This is the bit of code that tells plasticSarcastic what ip and port we are.  
-        // Essentially our authentication/auto-discovery method for right now.
-        oscServer.on('listening', function () {
-            debug('oscServer is listening on ' + oscServer.address().address + ':' + oscServer.address().port);
-            
-            httpClient = http.createClient('80', 'plasticsarcastic.com');
-            request = httpClient.request('GET', '/nodejs/scrCreateServer.php?ip=' + INTERNAL_IP + '&port=' + OSC_PORT, {'host' : 'plasticsarcastic.com'});
-            request.end();
-            request.on('response', function (response) {
-                response.setEncoding('utf8');
-                response.on('data', function (txt) {
-                    if (txt === '0') {
-                        throw new Error("Couldn't create server.\n");
-                    }
-                });
-            });
-        });
-
-        //"Finalize" the OSC server.
-        oscServer.bind(OSC_PORT, INTERNAL_IP);
-
-        //Websocket server:
-        wsServer = ws.createServer();
-        wsServer.addListener('connection', function (con) {
-            con.addListener('message', function (msg) {
-                var message = JSON.parse(msg),
-                    from = lookupClient(ac.TYP_WS, con.id),
-                    to = lookupClientUsername(message.to),
-                    title = message.title,
-                    body = message.body;
-                
-                debug("message received " + msg);
-                
-                switch (title) {
-                case "/connect":
-                    //Add them to the clients list when they connect if the username is free.
-                    for (i = 0; i < clients.length; i += 1) {
-                        if (clients[i].name === body[0]) {
-                            wsServer.send(con.id, 
-                                JSON.stringify({'from' : 'SYS', 'title' : '/connect', 'body' : [-1]}));
-                            return;
-                        }
-                    }
-
-                    client = new ac.WebSocketClient(body[0], con.id);
-                    clients.push(client);
-                    
-                    msgSndWs(clients.length - 1, "SYS", "/connect", 1);
-                    debug('Added client ' + clients[clients.length - 1].name + 
-                          ' (ws id ' + con.id + ', client #' + (clients.length - 1) + ')');
-                    break;
-                
-                case "/disconnect":
-                    dropClient(from, "disconnect by user.");
-                    break;
-                
-                case "/getClients":
-                    clientList = [];
-                    for (i = 0; i < clients.length; i += 1) {
-                        clientList.push(clients[i].name);
-                    }
-                    msgSndWs(from, "SYS", "/getClients", clientList);
-                    break;
-
-                default:
-                    msgRec(from, to, title, body);
-                    break;
-                }
-            });
-            
-            con.addListener('close', function () {
-                dropClient(lookupClient(ac.TYP_WS, con.id), "connection closed");
-            });
-
-            con.addListener('timeout', function () {
-                dropClient(lookupClient(ac.TYP_WS, con.id), "connection timeout");
-            });
-
-            con.addListener('error', function (e) {
-                dropClient(lookupClient(ac.TYP_WS, con.id), "connection error: " + e);
-            });
-        });
-
-        wsServer.addListener('listening', function () {
-            debug('wsServer is listening on ' + INTERNAL_IP + ":" + WS_PORT);
-        });
-        
-        //"Finalize" websocket server.
-        wsServer.listen(WS_PORT);
-
-        setInterval(kickIdle, 1000);
     }
 }
 

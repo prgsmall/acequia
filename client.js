@@ -57,8 +57,8 @@ OSCClient = function (name, ip, portIn, portOut) {
 OSCClient.prototype = new AcequiaClient;
 OSCClient.prototype.equals = function (prot, ip, portIn) {
     return (this.protocol === prot &&
-            this.ip === ip         &&
-            this.portIn === portIn);
+            this.ip       === ip   &&
+            this.portIn   === portIn);
 };
 
 // Export the entities that Acequia needs
