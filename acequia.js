@@ -6,15 +6,15 @@ var sys = require('sys'),
     URL = require('url'),
     net = require('net'),
     dgram = require('dgram'),
+    ws = require('./vendor/websocket-server'),
     osc = require('./libs/osc.js'),
-    ws = require('./libs/ws/ws/server.js'),
     netIP = require('./libs/netIP.js'),
     ac = require("./client.js");
 
 var DEBUG = 1,
     INTERNAL_IP = '',
     OSC_PORT = 9090,
-    WS_PORT = 80,
+    WS_PORT = 9091,
     HTTP_PORT = 9092,
     TCP_PORT = 9093,
     TIMEOUT = 600; //Seconds before kicking idle clients.
@@ -200,8 +200,8 @@ function startServers() {
     //Websocket server:
     wsServer = ws.createServer();
     wsServer.addListener('connection', function (con) {
-        debug("connection");
-        con.addListener('message', function (msg) {
+        debug("wsServer: connection");
+        con.addListener('connection: message', function (msg) {
             debug("message");
             
             var message = JSON.parse(msg),
@@ -265,12 +265,28 @@ function startServers() {
         debug('wsServer is listening on ' + INTERNAL_IP + ":" + WS_PORT);
     });
     
-    wsServer.addListener('attach', function (con) {
-        debug('attach');
+    wsServer.addListener('upgrade', function (con) {
+        debug('wsServer: upgrade');
     });
     
-    wsServer.addListener('detach', function (con) {
-        debug('detach');
+    wsServer.addListener('request', function (con) {
+        debug('wsServer: request');
+    });
+    
+    wsServer.addListener('stream', function (con) {
+        debug('wsServer: stream');
+    });
+    
+    wsServer.addListener('close', function (con) {
+        debug('wsServer: close');
+    });
+    
+    wsServer.addListener('clientError', function (e) {
+        debug('wsServer: clientError: ' + e);
+    });
+    
+    wsServer.addListener('error', function (e) {
+        debug('wsServer: error: ' + e);
     });
     
     wsServer.listen(WS_PORT);

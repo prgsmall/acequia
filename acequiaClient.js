@@ -68,5 +68,6 @@ var acequiaClient = {
     },
     
     ws_onerror: function (evt) {
+        alert(evt);
     }
 };
