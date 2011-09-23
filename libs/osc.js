@@ -1,4 +1,4 @@
-var jspack = require('./node-jspack/jspack').jspack; 
+var jspack = require('../vendor/node-jspack/jspack').jspack; 
 
 var Osc=function(addr,tt,d){
 	this.address=addr;
