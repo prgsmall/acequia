@@ -201,8 +201,8 @@ function startServers() {
     wsServer = ws.createServer();
     wsServer.addListener('connection', function (con) {
         debug("wsServer: connection");
-        con.addListener('connection: message', function (msg) {
-            debug("message");
+        con.addListener('message', function (msg) {
+            debug("connection: message");
             
             var message = JSON.parse(msg),
                 from = lookupClient(ac.TYP_WS, con.id),
