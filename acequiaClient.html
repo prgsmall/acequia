@@ -1,30 +1,66 @@
+<!DOCTYPE HTML>
 <html>
     <head>
         <title>Acequia Client Test Page</title>
+        <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.2/themes/base/jquery-ui.css" type="text/css" />
+        
+        <script src='msg.js'></script>
         <script src='acequiaClient.js'></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js"></script>
         <script type='text/javascript'>
-            acequiaClient.connect('ws://localhost:9091', "user" + Math.random().toString(),
-                function (from, command, body) {
-                    switch (command){
-                    case '/connect':
-                        if (body[0] < 0) {
-                            alert('ERROR logging in: ' + body);
-                        } else {
-                            alert('login successful.');
-                            acequiaClient.send('/getClients');
-                        }
-                        break;
-                    
-                    case '/getClients':
-                        alert('Currently connected clients: ' + body);
-                        break;
-                    }
+            var onconnect = function(msg, ac) {
+                if (msg.body[0] < 0) {
+                    alert('ERROR logging in: ' + msg.body);
+                } else {
+                    ac.getClients();
                 }
-            );
+            };
+            
+            var ongetClients = function(msg, ac) {
+                alert('Currently connected clients: ' + msg.body);
+            };
+            
+            var ontest = function(msg, ac) {
+                $("<div></div>")
+                    .html(msg.title + " " + msg.from)
+                    .appendTo("#received-messages");
+            };
+            
+            var onconnectionChanged = function (connected) {
+                $("#connect").button("option", "disabled", connected);
+                $("#disconnect").button("option", "disabled", !connected);
+                $("#send").button("option", "disabled", !connected);
+            };
+            
+            var ac = new AcequiaClient("ws://localhost:9091", "user" + Math.random());
+            ac.addMessageListener(AcequiaClient.CONNECT, onconnect);
+            ac.addMessageListener(AcequiaClient.GETCLIENTS, ongetClients);
+            ac.addMessageListener('test', ontest);
+            ac.addConnectionChangeHandler(onconnectionChanged);
+            
+            $(document).ready( function(){
+                $("button").button();
+                $("#disconnect").button("option", "disabled", true);
+                $("#send").button("option", "disabled", true);
+            });
         </script>
     </head>
     
     <body>
-    
+    <table>
+        <tr>
+            <td><button id="connect" onclick="ac.connect();">Connect</button></td>
+        </tr>
+        <tr>
+            <td><button id="disconnect" onclick="ac.disconnect();">Disconnect</button></td>
+        </tr>
+        <tr>
+            <td><button id="send" onclick="ac.send('test');">Send Test Message</button></td>
+        </tr>
+        <tr>
+            <td><div id="received-messages" style="border:1px black solid;height:200px;width:500px;"></div></td>
+        </tr>
+    <table>
     </body>
 </html>

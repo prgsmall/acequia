@@ -19,81 +19,48 @@ var DEBUG = 1,
     TCP_PORT = 9093,
     TIMEOUT = 600; //Seconds before kicking idle clients.
 
+/**
+ * The standard messages that the acequia system handles.
+ */
+var MSG_CONNECT    = "/connect";
+var MSG_DISCONNECT = "/disconnect";
+var MSG_GETCLIENTS = "/getClients";
 
 // The list of clients
 var clients = [];
 
 var oscServer, wsServer;
 
-//Logs str to the console if the 'global' debug is set to 1.
+// Logs str to the console if the 'global' debug is set to 1.
 function debug(str) {
     if (DEBUG) {
         console.log('[' + (new Date()) + '] ' + str);
     }
 }
 
-//Utility function for sending an osc message to a given client.
-function msgSndOsc(to, from, title, body, tt) {
-    var data = [from].concat(body),
-    oscMsg = osc.newOsc(title, 's' + tt, data),
-    buffer = osc.oscToBuffer(oscMsg);
-    
-    oscServer.send(buffer, 0, buffer.length, clients[to].portOut, clients[to].ip);
-}
-
-
-//Utility function for sending a websocket message to a given client.
-function msgSndWs(to, from, title, body) {
-    wsServer.send(clients[to].id, JSON.stringify({'from' : from, 'title' : title, 'body' : body}));
-}
-
-
 // The master sending function which takes a message meant for a client, decides 
 // which protocol to use, and calls the appropriate function.
 function msgSnd(to, from, title, body, tt) {
-    if (to === -1) { 
-        return; 
-    }
-    
-    switch (clients[to].protocol) {
-    case ac.TYP_OSC:
-        msgSndOsc(to, from, title, body, tt);
-        break;
-    
-    case ac.TYP_WS:
-        msgSndWs(to, from, title, body);
-        break;
-    }
+    clients[to].send(from, title, body, tt);
     debug("Sent message " + title + " to client #" + to + " (" + clients[to].name + ")");
 }
 
 //The master function which sends messages to all clients except for exc.
 function msgSndAll(exc, mesid, data, tt) {
-    var i;
+    var i, name = clients[exc].name;
     for (i = 0; i < clients.length; i += 1) {
         if (i !== exc) {
-            msgSnd(i, mesid, data, tt);
+            clients[i].send(name, mesid, data, tt);
         }
     }
 }
 
 // Message routing goes here.
-function msgRec(from, to, title, body, tt) {
-    var time = (new Date()).getTime();
-    debug('Received message ' + title + ' from client #' + from + ' (' + clients[from].name + ')');
-    if (from === -1) { 
-        return;
-    }
-    clients[from].lastMessage = time;
-    
-    switch (title) {
-    case "place-holder":
-        break;
-    case "place-holder2":
-        break;
-    default:
+function onMessage(from, to, title, body, tt) {
+    if (to === -1) {
+        msgSndAll(from, title, body, tt);
+    } else {
         msgSnd(to, clients[from].name, title, body, tt);
-        break;
     }
 }
 
@@ -136,7 +103,7 @@ function kickIdle() {
     
     for (i = 0; i < clients.length; i += 1) {
         if ((time - clients[i].lastMessage) > TIMEOUT * 1000) {
-            dropClient(i, 'timeout');
+            dropClient(i, "client timeout");
             i -= 1;
         }
     }
@@ -144,25 +111,25 @@ function kickIdle() {
 
 // Once we actually get our internal IP, we start the servers.
 function startServers() {
-    var i, oscMsg, from, to, title, tt, client, portOut,
+    var i,  from, to, title, tt, client, portOut,
     httpClient, request, clientList;
 
     //OSC Server.
     oscServer = dgram.createSocket('udp4');
     oscServer.on('message', function (msg, rinfo) {
-        oscMsg = osc.bufferToOsc(msg);
+        var oscMsg = osc.bufferToOsc(msg);
         
         switch (oscMsg.address) {
-        case "/connect":
+        case MSG_CONNECT:
             //the second parameter when logging in is an optional 'port to send to'.
             portOut = (oscMsg.data[1] > 0) ? oscMsg.data[1] : rinfo.port;
-            client = new ac.OSCClient(oscMsg.data[0], rinfo.address, rinfo.port, portOut);
+            client = new ac.OSCClient(oscMsg.data[0], rinfo.address, rinfo.port, portOut, oscServer);
             clients.push(client);
             debug('Added client ' + oscMsg.data[0] + 
                   ' (OSC@' + rinfo.address + ':' + rinfo.port + ', client #' + (clients.length - 1) + ')');
             break;
         
-        case "/disconnect":
+        case MSG_DISCONNECT:
             dropClient(lookupClient(ac.TYP_OSC, rinfo.address, rinfo.port), "disconnect by user");
             break;
         
@@ -171,7 +138,7 @@ function startServers() {
             to = lookupClientUsername(oscMsg.data.shift());
             title = oscMsg.address;
             tt = oscMsg.typeTags.slice(1);
-            msgRec(from, to, title, oscMsg.data, tt);
+            onMessage(from, to, title, oscMsg.data, tt);
             break;
         }
     });
@@ -182,7 +149,8 @@ function startServers() {
         debug('oscServer is listening on ' + oscServer.address().address + ':' + oscServer.address().port);
         
         httpClient = http.createClient('80', 'plasticsarcastic.com');
-        request = httpClient.request('GET', '/nodejs/scrCreateServer.php?ip=' + INTERNAL_IP + '&port=' + OSC_PORT, {'host' : 'plasticsarcastic.com'});
+        request = httpClient.request('GET', '/nodejs/scrCreateServer.php?ip=' + INTERNAL_IP + 
+            '&port=' + OSC_PORT, {'host' : 'plasticsarcastic.com'});
         request.end();
         request.on('response', function (response) {
             response.setEncoding('utf8');
@@ -194,7 +162,6 @@ function startServers() {
         });
     });
 
-    //"Finalize" the OSC server.
     oscServer.bind(OSC_PORT, INTERNAL_IP);
 
     //Websocket server:
@@ -204,15 +171,12 @@ function startServers() {
         con.addListener('message', function (msg) {
             debug("connection: message");
             
-            var message = JSON.parse(msg),
-                from = lookupClient(ac.TYP_WS, con.id),
-                to = lookupClientUsername(message.to),
+            var from, to,
+                message = JSON.parse(msg),
                 title = message.title,
-                body = message.body;
-            
-            
-            switch (title) {
-            case "/connect":
+                body  = message.body;
+
+            if (title === MSG_CONNECT) {
                 //Add them to the clients list when they connect if the username is free.
                 for (i = 0; i < clients.length; i += 1) {
                     if (clients[i].name === body[0]) {
@@ -222,29 +186,34 @@ function startServers() {
                     }
                 }
 
-                client = new ac.WebSocketClient(body[0], con.id);
+                client = new ac.WebSocketClient(body[0], con.id, wsServer);
                 clients.push(client);
                 
-                msgSndWs(clients.length - 1, "SYS", "/connect", 1);
+                client.send("SYS", MSG_CONNECT, 1);
                 debug('Added client ' + clients[clients.length - 1].name + 
-                      ' (ws id ' + con.id + ', client #' + (clients.length - 1) + ')');
-                break;
-            
-            case "/disconnect":
-                dropClient(from, "disconnect by user.");
-                break;
-            
-            case "/getClients":
-                clientList = [];
-                for (i = 0; i < clients.length; i += 1) {
-                    clientList.push(clients[i].name);
-                }
-                msgSndWs(from, "SYS", "/getClients", clientList);
-                break;
+                      ' (ws id ' + con.id + ', client #' + (clients.length - 1) + ')');                
+            } else {
+                from = lookupClient(ac.TYP_WS, con.id);
+                to = lookupClientUsername(message.to);
 
-            default:
-                msgRec(from, to, title, body);
-                break;
+                switch (title) {
+                case MSG_DISCONNECT:
+                    clients[from].send("SYS", MSG_DISCONNECT, 1);
+                    dropClient(from, "disconnect by user.");
+                    break;
+            
+                case MSG_GETCLIENTS:
+                    clientList = [];
+                    for (i = 0; i < clients.length; i += 1) {
+                        clientList.push(clients[i].name);
+                    }
+                    clients[from].send("SYS", MSG_GETCLIENTS, clientList);
+                    break;
+
+                default:
+                    onMessage(from, to, title, body);
+                    break;
+                }
             }
         });
         
@@ -290,7 +259,26 @@ function startServers() {
     });
     
     wsServer.listen(WS_PORT);
-
+/*
+    // HTTP Server
+    http.createServer(function (req, res) {
+        var pathName = URL.parse(req.url, true).pathname;
+        console.log("HTTP server received " + pathName);
+        res.writeHead(200, {'Content-Type': 'text/plain'});
+        switch (pathName) {
+        case MSG_CONNECT:
+            break;
+        case MSG_DISCONNECT:
+            break;
+        case MSG_GETCLIENTS:
+            break;
+        default:
+            break;
+        }
+        res.end(req.body + '  Hello World\n');
+    }).listen(HTTP_PORT);
+    debug("httpServer is listening on " + INTERNAL_IP + ":" + HTTP_PORT);
+*/
     setInterval(kickIdle, 1000);
 }
 
@@ -298,7 +286,7 @@ function startServers() {
 // It starts a server for each individual protocol.
 function start() {
     
-    //First, we need to get our internal IP, by parsing ifconfig:
+    // First, we need to get our internal IP, by parsing ifconfig:
     if (process.argv.length > 2) {
         INTERNAL_IP = process.argv[2];
         startServers();
