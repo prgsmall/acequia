@@ -8,11 +8,10 @@
  * be a broadcasted message
  */
 function AcequiaMessage(from, name, body, to) {
-    this.to = (typeof(to) === "undefined") ? "" : to;
     this.from = from;
+    this.to   = (typeof(to) === "undefined") ? "" : to;
     this.name = name;
-    this.body = (typeof(body) === "undefined") ? [] : 
-                ((body instanceof Array) ? body : [body]);
+    this.body = (typeof(body) === "undefined") ? [] : ((body instanceof Array) ? body : [body]);
 }
 
 /**

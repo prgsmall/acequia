@@ -116,7 +116,7 @@ AcequiaClient.prototype.disconnect = function () {
  * Sends the getClients message to the Acequia server.
  */
 AcequiaClient.prototype.getClients = function () {
-    this.send(AcequiaClient.GETCLIENTS, this.userName);
+    this.send(AcequiaClient.GETCLIENTS);
 };
 
 /**
@@ -156,7 +156,7 @@ AcequiaClient.prototype.acequia_onDisconnect = function () {
  * @param {Event} evt  The event object.
  */
 AcequiaClient.prototype.ws_onopen = function (evt) {
-    this.send(AcequiaClient.CONNECT, this.userName);
+    this.send(AcequiaClient.CONNECT);
 };
 
 /**

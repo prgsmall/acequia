@@ -5,6 +5,7 @@ var sys = require("sys"),
     http = require("http"),
     URL = require("url"),
     net = require("net"),
+    log4js = require('./vendor/log4js-node'),
     dgram = require("dgram"),
     ws = require("./vendor/websocket-server"),
     osc = require("./libs/osc.js"),
@@ -31,18 +32,13 @@ var clients = [];
 
 var oscServer, wsServer;
 
-// Logs str to the console if the "global" debug is set to 1.
-function debug(str) {
-    if (DEBUG) {
-        console.log("[" + (new Date()) + "] " + str);
-    }
-}
+var logger = log4js.getLogger("acequia");
 
 // The master sending function which takes a message meant for a client, decides 
 // which protocol to use, and calls the appropriate function.
 function msgSnd(to, from, title, body, tt) {
     clients[to].send(from, title, body, tt);
-    debug("Sent message " + title + " to client #" + to + " (" + clients[to].name + ")");
+    logger.debug("Sent message " + title + " to client #" + to + " (" + clients[to].name + ")");
 }
 
 //The master function which sends messages to all clients except for exc.
@@ -93,7 +89,7 @@ function dropClient(client, reason) {
     if (typeof(clients[client]) === "undefined") {
         return;
     }
-    debug("Dropped client #" + client + " (" + clients[client].name + ") from server.  (" + reason + ")");
+    logger.debug("Dropped client #" + client + " (" + clients[client].name + ") from server.  (" + reason + ")");
     clients.splice(client, 1);
 }
 
@@ -125,7 +121,7 @@ function startServers() {
             portOut = (oscMsg.data[1] > 0) ? oscMsg.data[1] : rinfo.port;
             client = new ac.OSCClient(oscMsg.data[0], rinfo.address, rinfo.port, portOut, oscServer);
             clients.push(client);
-            debug("Added client " + oscMsg.data[0] + 
+            logger.debug("Added client " + oscMsg.data[0] + 
                   " (OSC@" + rinfo.address + ":" + rinfo.port + ", client #" + (clients.length - 1) + ")");
             break;
         
@@ -146,7 +142,7 @@ function startServers() {
     // This is the bit of code that tells plasticSarcastic what ip and port we are.  
     // Essentially our authentication/auto-discovery method for right now.
     oscServer.on("listening", function () {
-        debug("oscServer is listening on " + oscServer.address().address + ":" + oscServer.address().port);
+        logger.debug("oscServer is listening on " + oscServer.address().address + ":" + oscServer.address().port);
         
         httpClient = http.createClient("80", "plasticsarcastic.com");
         request = httpClient.request("GET", "/nodejs/scrCreateServer.php?ip=" + INTERNAL_IP + 
@@ -167,9 +163,9 @@ function startServers() {
     //Websocket server:
     wsServer = ws.createServer();
     wsServer.addListener("connection", function (con) {
-        debug("wsServer: connection");
+        logger.debug("wsServer: connection");
         con.addListener("message", function (msg) {
-            debug("connection: message");
+            logger.debug("connection: message " + msg);
             
             var from, to,
                 message = JSON.parse(msg),
@@ -179,18 +175,18 @@ function startServers() {
             if (title === MSG_CONNECT) {
                 //Add them to the clients list when they connect if the username is free.
                 for (i = 0; i < clients.length; i += 1) {
-                    if (clients[i].name === body[0]) {
+                    if (clients[i].name === message.from) {
                         wsServer.send(con.id, 
                             JSON.stringify({"from" : "SYS", "name" : MSG_CONNECT, "body" : [-1]}));
                         return;
                     }
                 }
 
-                client = new ac.WebSocketClient(body[0], con.id, wsServer);
+                client = new ac.WebSocketClient(message.from, con.id, wsServer);
                 clients.push(client);
                 
                 client.send("SYS", MSG_CONNECT, 1);
-                debug("Added client " + clients[clients.length - 1].name + 
+                logger.debug("Added client " + clients[clients.length - 1].name + 
                       " (ws id " + con.id + ", client #" + (clients.length - 1) + ")");                
             } else {
                 from = lookupClient(ac.TYP_WS, con.id);
@@ -231,31 +227,31 @@ function startServers() {
     });
 
     wsServer.addListener("listening", function () {
-        debug("wsServer is listening on " + INTERNAL_IP + ":" + WS_PORT);
+        logger.debug("wsServer is listening on " + INTERNAL_IP + ":" + WS_PORT);
     });
     
     wsServer.addListener("upgrade", function (con) {
-        debug("wsServer: upgrade");
+        logger.debug("wsServer: upgrade");
     });
     
     wsServer.addListener("request", function (con) {
-        debug("wsServer: request");
+        logger.debug("wsServer: request");
     });
     
     wsServer.addListener("stream", function (con) {
-        debug("wsServer: stream");
+        logger.debug("wsServer: stream");
     });
     
     wsServer.addListener("close", function (con) {
-        debug("wsServer: close");
+        logger.debug("wsServer: close");
     });
     
     wsServer.addListener("clientError", function (e) {
-        debug("wsServer: clientError: " + e);
+        logger.debug("wsServer: clientError: " + e);
     });
     
     wsServer.addListener("error", function (e) {
-        debug("wsServer: error: " + e);
+        logger.debug("wsServer: error: " + e);
     });
     
     wsServer.listen(WS_PORT);
@@ -295,7 +291,7 @@ function start() {
             INTERNAL_IP = ip;
             startServers();
             if (error) {
-                console.log("error:", error);
+                logger.error("error:", error);
             }
         }, false);
     }
