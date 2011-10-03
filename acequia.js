@@ -1,18 +1,18 @@
 /*global console process require setInterval*/
 
-// Imports and 'globals'.
-var sys = require('sys'),
-    http = require('http'),
-    URL = require('url'),
-    net = require('net'),
-    dgram = require('dgram'),
-    ws = require('./vendor/websocket-server'),
-    osc = require('./libs/osc.js'),
-    netIP = require('./libs/netIP.js'),
+// Imports and globals.
+var sys = require("sys"),
+    http = require("http"),
+    URL = require("url"),
+    net = require("net"),
+    dgram = require("dgram"),
+    ws = require("./vendor/websocket-server"),
+    osc = require("./libs/osc.js"),
+    netIP = require("./libs/netIP.js"),
     ac = require("./client.js");
 
 var DEBUG = 1,
-    INTERNAL_IP = '',
+    INTERNAL_IP = "",
     OSC_PORT = 9090,
     WS_PORT = 9091,
     HTTP_PORT = 9092,
@@ -31,10 +31,10 @@ var clients = [];
 
 var oscServer, wsServer;
 
-// Logs str to the console if the 'global' debug is set to 1.
+// Logs str to the console if the "global" debug is set to 1.
 function debug(str) {
     if (DEBUG) {
-        console.log('[' + (new Date()) + '] ' + str);
+        console.log("[" + (new Date()) + "] " + str);
     }
 }
 
@@ -93,7 +93,7 @@ function dropClient(client, reason) {
     if (typeof(clients[client]) === "undefined") {
         return;
     }
-    debug('Dropped client #' + client + ' (' + clients[client].name + ') from server.  (' + reason + ')');
+    debug("Dropped client #" + client + " (" + clients[client].name + ") from server.  (" + reason + ")");
     clients.splice(client, 1);
 }
 
@@ -115,18 +115,18 @@ function startServers() {
     httpClient, request, clientList;
 
     //OSC Server.
-    oscServer = dgram.createSocket('udp4');
-    oscServer.on('message', function (msg, rinfo) {
+    oscServer = dgram.createSocket("udp4");
+    oscServer.on("message", function (msg, rinfo) {
         var oscMsg = osc.bufferToOsc(msg);
         
         switch (oscMsg.address) {
         case MSG_CONNECT:
-            //the second parameter when logging in is an optional 'port to send to'.
+            //the second parameter when logging in is an optional "port to send to".
             portOut = (oscMsg.data[1] > 0) ? oscMsg.data[1] : rinfo.port;
             client = new ac.OSCClient(oscMsg.data[0], rinfo.address, rinfo.port, portOut, oscServer);
             clients.push(client);
-            debug('Added client ' + oscMsg.data[0] + 
-                  ' (OSC@' + rinfo.address + ':' + rinfo.port + ', client #' + (clients.length - 1) + ')');
+            debug("Added client " + oscMsg.data[0] + 
+                  " (OSC@" + rinfo.address + ":" + rinfo.port + ", client #" + (clients.length - 1) + ")");
             break;
         
         case MSG_DISCONNECT:
@@ -145,17 +145,17 @@ function startServers() {
     
     // This is the bit of code that tells plasticSarcastic what ip and port we are.  
     // Essentially our authentication/auto-discovery method for right now.
-    oscServer.on('listening', function () {
-        debug('oscServer is listening on ' + oscServer.address().address + ':' + oscServer.address().port);
+    oscServer.on("listening", function () {
+        debug("oscServer is listening on " + oscServer.address().address + ":" + oscServer.address().port);
         
-        httpClient = http.createClient('80', 'plasticsarcastic.com');
-        request = httpClient.request('GET', '/nodejs/scrCreateServer.php?ip=' + INTERNAL_IP + 
-            '&port=' + OSC_PORT, {'host' : 'plasticsarcastic.com'});
+        httpClient = http.createClient("80", "plasticsarcastic.com");
+        request = httpClient.request("GET", "/nodejs/scrCreateServer.php?ip=" + INTERNAL_IP + 
+            "&port=" + OSC_PORT, {"host" : "plasticsarcastic.com"});
         request.end();
-        request.on('response', function (response) {
-            response.setEncoding('utf8');
-            response.on('data', function (txt) {
-                if (txt === '0') {
+        request.on("response", function (response) {
+            response.setEncoding("utf8");
+            response.on("data", function (txt) {
+                if (txt === "0") {
                     throw new Error("Couldn't create server.\n");
                 }
             });
@@ -166,14 +166,14 @@ function startServers() {
 
     //Websocket server:
     wsServer = ws.createServer();
-    wsServer.addListener('connection', function (con) {
+    wsServer.addListener("connection", function (con) {
         debug("wsServer: connection");
-        con.addListener('message', function (msg) {
+        con.addListener("message", function (msg) {
             debug("connection: message");
             
             var from, to,
                 message = JSON.parse(msg),
-                title = message.title,
+                title = message.name,
                 body  = message.body;
 
             if (title === MSG_CONNECT) {
@@ -181,7 +181,7 @@ function startServers() {
                 for (i = 0; i < clients.length; i += 1) {
                     if (clients[i].name === body[0]) {
                         wsServer.send(con.id, 
-                            JSON.stringify({'from' : 'SYS', 'title' : '/connect', 'body' : [-1]}));
+                            JSON.stringify({"from" : "SYS", "name" : MSG_CONNECT, "body" : [-1]}));
                         return;
                     }
                 }
@@ -190,8 +190,8 @@ function startServers() {
                 clients.push(client);
                 
                 client.send("SYS", MSG_CONNECT, 1);
-                debug('Added client ' + clients[clients.length - 1].name + 
-                      ' (ws id ' + con.id + ', client #' + (clients.length - 1) + ')');                
+                debug("Added client " + clients[clients.length - 1].name + 
+                      " (ws id " + con.id + ", client #" + (clients.length - 1) + ")");                
             } else {
                 from = lookupClient(ac.TYP_WS, con.id);
                 to = lookupClientUsername(message.to);
@@ -217,45 +217,45 @@ function startServers() {
             }
         });
         
-        con.addListener('close', function () {
+        con.addListener("close", function () {
             dropClient(lookupClient(ac.TYP_WS, con.id), "connection closed");
         });
 
-        con.addListener('timeout', function () {
+        con.addListener("timeout", function () {
             dropClient(lookupClient(ac.TYP_WS, con.id), "connection timeout");
         });
 
-        con.addListener('error', function (e) {
+        con.addListener("error", function (e) {
             dropClient(lookupClient(ac.TYP_WS, con.id), "connection error: " + e);
         });
     });
 
-    wsServer.addListener('listening', function () {
-        debug('wsServer is listening on ' + INTERNAL_IP + ":" + WS_PORT);
+    wsServer.addListener("listening", function () {
+        debug("wsServer is listening on " + INTERNAL_IP + ":" + WS_PORT);
     });
     
-    wsServer.addListener('upgrade', function (con) {
-        debug('wsServer: upgrade');
+    wsServer.addListener("upgrade", function (con) {
+        debug("wsServer: upgrade");
     });
     
-    wsServer.addListener('request', function (con) {
-        debug('wsServer: request');
+    wsServer.addListener("request", function (con) {
+        debug("wsServer: request");
     });
     
-    wsServer.addListener('stream', function (con) {
-        debug('wsServer: stream');
+    wsServer.addListener("stream", function (con) {
+        debug("wsServer: stream");
     });
     
-    wsServer.addListener('close', function (con) {
-        debug('wsServer: close');
+    wsServer.addListener("close", function (con) {
+        debug("wsServer: close");
     });
     
-    wsServer.addListener('clientError', function (e) {
-        debug('wsServer: clientError: ' + e);
+    wsServer.addListener("clientError", function (e) {
+        debug("wsServer: clientError: " + e);
     });
     
-    wsServer.addListener('error', function (e) {
-        debug('wsServer: error: ' + e);
+    wsServer.addListener("error", function (e) {
+        debug("wsServer: error: " + e);
     });
     
     wsServer.listen(WS_PORT);
@@ -264,7 +264,7 @@ function startServers() {
     http.createServer(function (req, res) {
         var pathName = URL.parse(req.url, true).pathname;
         console.log("HTTP server received " + pathName);
-        res.writeHead(200, {'Content-Type': 'text/plain'});
+        res.writeHead(200, {"Content-Type": "text/plain"});
         switch (pathName) {
         case MSG_CONNECT:
             break;
@@ -275,7 +275,7 @@ function startServers() {
         default:
             break;
         }
-        res.end(req.body + '  Hello World\n');
+        res.end(req.body + "  Hello World\n");
     }).listen(HTTP_PORT);
     debug("httpServer is listening on " + INTERNAL_IP + ":" + HTTP_PORT);
 */
@@ -295,7 +295,7 @@ function start() {
             INTERNAL_IP = ip;
             startServers();
             if (error) {
-                console.log('error:', error);
+                console.log("error:", error);
             }
         }, false);
     }

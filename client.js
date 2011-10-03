@@ -47,8 +47,8 @@ WebSocketClient.prototype.equals = function (prot, id) {
             this.id === id);
 };
 
-WebSocketClient.prototype.send = function(from, title, body) {
-    var msgBody = JSON.stringify({'from' : from, 'title' : title, 'body' : body});
+WebSocketClient.prototype.send = function(from, name, body) {
+    var msgBody = JSON.stringify({'from' : from, 'name' : name, 'body' : body});
     this.server.send(this.id, msgBody);
     this.update();
 };
@@ -78,9 +78,9 @@ OSCClient.prototype.equals = function (prot, ip, portIn) {
             this.portIn   === portIn);
 };
 
-OSCClient.prototype.send = function(from, title, body, tt) {
+OSCClient.prototype.send = function(from, name, body, tt) {
     var data = [from].concat(body),
-    oscMsg = osc.newOsc(title, 's' + tt, data),
+    oscMsg = osc.newOsc(name, 's' + tt, data),
     buffer = osc.oscToBuffer(oscMsg);
     
     this.server.send(buffer, 0, buffer.length, this.portOut, this.ip);

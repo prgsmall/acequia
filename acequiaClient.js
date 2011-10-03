@@ -179,9 +179,9 @@ AcequiaClient.prototype.ws_onmessage = function (evt) {
     var i, msg = JSON.parse(evt.data);
     
     // if there is a message listener for this message, call it.
-    if (msg.title in this.listeners) {
-        for (i in this.listeners[msg.title]) {
-            this.listeners[msg.title][i](msg, this);
+    if (msg.name in this.listeners) {
+        for (i in this.listeners[msg.name]) {
+            this.listeners[msg.name][i](msg, this);
         }
     } 
     
