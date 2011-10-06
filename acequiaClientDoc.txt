@@ -2,8 +2,11 @@ Acequia WebSocket Client Documentation
 --------------------------------------
 
 This client is a communication layer for communicating with the acequia server
-via websockets.  Most complicated networking code is abstracted from the user
-and replaced with simple send/receive functions.
+via websockets or ajax/http.
+
+To create a new AcequiaClient, create an instance of the acequia client object:
+
+var ac = new AcequiaClient("ws://mysite.com", "billybob");
 
 Function List:
 --------------

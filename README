@@ -1,6 +1,10 @@
 Acequia
 -------
 
-Protocol-apathetic node-js message router.
+node-js message router supporting mulitple connection protocols.
 
 Currently supports Open Sound Control (OSC) and WebSockets.
+
+Planned to support:
+    HTTP/REST
+    direct socket conection
