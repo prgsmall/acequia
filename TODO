@@ -1,14 +1,12 @@
 Acequia TODO
 ------------
 
-Slightly in order of priority.
+Change message format.  Messages will always contain:  from: title: body: to:
 
-Make notes for function headers in acequia.js (make sure username strings vs. client ids are clear).
-Formalize structure of debug messages.
-In acequiaClient, make sure all communication (aside from acConnect) is blocked after acDisconnect()'ing (use a 'connected' variable).
-Allow sending to a list of clients, or possibly a broadcast to all clients.
-Add 'webSocket address' parameter to clients so two websocket clients can communicate directly rather than going through acequia.  Empty string for not supported or a uri if a server is listening.
-Automatic obtaining of server IP.  (Sort of already implemented, just AJAX plasticSarcastic/nodejs/scrJoinServer.php).
-Resurrect HTTP server.
-Finish up Java OSC client.
-Resurrect TCP server.
+Add timestamp to the message format
+
+Add a config file to turn on/off the servers.
+
+Create http mailbox server and client.
+
+Create the TCP server for direct socket communication.

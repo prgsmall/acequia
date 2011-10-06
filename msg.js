@@ -12,12 +12,14 @@ function AcequiaMessage(from, name, body, to) {
     this.to   = (typeof(to) === "undefined") ? "" : to;
     this.name = name;
     this.body = (typeof(body) === "undefined") ? [] : ((body instanceof Array) ? body : [body]);
+    this.timestamp = "";
 }
 
 /**
  * Returns a JSON string of the message object.
- * @return {String} The stringified message object.
+ * @returns{String} The stringified message object.
  */
 AcequiaMessage.prototype.toString = function () {
+    this.timestamp = acutil.xsdDateTime(new Date());
     return JSON.stringify(this);
 };

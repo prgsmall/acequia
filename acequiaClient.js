@@ -4,7 +4,7 @@
  * Creates an event callback by wrapping the object with a closure.
  * @param {Object} obj The object the wrap with a closure.
  * @param {String} func The name of the object's function to call.
- * @return {Function} The callback function.
+ * @returns{Function} The callback function.
  */
 var objCallback = function (obj, func) {
     return function () {
@@ -40,10 +40,6 @@ var AcequiaClient = function (uri, userName) {
     this.listeners = {};
     
     this.connectionChangeHandlers = [];
-    
-    // Add listeners for the connect and disconnect commands
-    this.addMessageListener(AcequiaClient.CONNECT, objCallback(this, "acequia_onConnect"));
-    this.addMessageListener(AcequiaClient.DISCONNECT, objCallback(this, "acequia_onDisconnect"));
 };
 
 /**
@@ -135,22 +131,6 @@ AcequiaClient.prototype.send = function (msgName, body, to) {
 };
 
 /**
- * Listens for the connect message, then sets connected flag to true.
- */
-AcequiaClient.prototype.acequia_onConnect = function () {
-    this.setConnected(true);
-};
-
-/**
- * Listens for the disconnect message, then sets connected flag to false and closes
- * the WebSocket connection.
- */
-AcequiaClient.prototype.acequia_onDisconnect = function () {
-    this.setConnected(false);
-    this.webSocket.close();
-};
-
-/**
  * Handles the onopen event from the WebSocket.  This method sends the connect
  * message to the Acequia client.
  * @param {Event} evt  The event object.
@@ -170,6 +150,48 @@ AcequiaClient.prototype.ws_onclose = function (evt) {
 };
 
 /**
+ * Default message handler for messages.  If the message is the connect message
+ * and the body of the message is an error code, this method returns false.
+ * @param {AcequiaMessage} msg The message to process.
+ * @returns{boolean} False if there is an error, true otherwise.
+ */
+AcequiaClient.prototype.ac_onmessage = function (msg) {
+    var ret = true;
+    if (msg.name === AcequiaClient.CONNECT) {
+
+        if (msg.body[0] === -1) {
+            console.error('ERROR logging in: ' + msg.body);
+            ret = false;
+        } else {
+            this.setConnected(true);
+        }
+    } else if (msg.name === AcequiaClient.DISCONNECT) {
+        this.setConnected(false);
+        this.webSocket.close();
+    }
+    
+    return ret;
+};
+
+/**
+ * Calls the message listeners for the given msgName.
+ * @param {AcequiaMessage} msg The message to send.
+ * @param {String} msgName The name of the message to look for in the listeners.
+ */
+AcequiaClient.prototype.callListeners = function (msg, msgName) {
+
+    if (typeof(msgName) === "undefined") {
+        msgName = msg.name;
+    }
+    
+    if (msgName in this.listeners) {
+        for (i in this.listeners[msgName]) {
+            this.listeners[msgName][i](msg, this);
+        }
+    }    
+};
+
+/**
  * Handles the onmessage event from the WebSocket.  This method calls any message listeners
  * that have registered for the message.  If there is a wildcard handler registered, then it
  * will call that as well.
@@ -177,20 +199,16 @@ AcequiaClient.prototype.ws_onclose = function (evt) {
  */
 AcequiaClient.prototype.ws_onmessage = function (evt) {
     var i, msg = JSON.parse(evt.data);
-    
-    // if there is a message listener for this message, call it.
-    if (msg.name in this.listeners) {
-        for (i in this.listeners[msg.name]) {
-            this.listeners[msg.name][i](msg, this);
-        }
-    } 
-    
-    // If there is a wildcard listener, call it.
-    if ("*" in this.listeners) {
-        for (i in this.listeners["*"]) {
-            this.listeners["*"][i](msg, this);
-        }
+
+    if (!this.ac_onmessage(msg)) {
+        return;
     }
+    
+    // Call the message listeners.
+    this.callListeners(msg);
+
+    // Call the wildcard message listeners.
+    this.callListeners(msg, "*");
 };
     
 /**

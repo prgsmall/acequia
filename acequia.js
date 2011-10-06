@@ -112,6 +112,7 @@ function startServers() {
 
     //OSC Server.
     oscServer = dgram.createSocket("udp4");
+
     oscServer.on("message", function (msg, rinfo) {
         var oscMsg = osc.bufferToOsc(msg);
         
@@ -158,6 +159,10 @@ function startServers() {
         });
     });
 
+    oscServer.on("close", function () {
+        logger.debug("oscServer closed")
+    });
+        
     oscServer.bind(OSC_PORT, INTERNAL_IP);
 
     //Websocket server:
