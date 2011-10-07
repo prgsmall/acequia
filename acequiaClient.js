@@ -125,8 +125,8 @@ AcequiaClient.prototype.send = function (msgName, body, to) {
     if (msgName !== AcequiaClient.CONNECT && !this.isConnected()) {
         console.error("AcequiaClient.send " + msgName + ": client is not connected");
     } else {
-        var msg = new AcequiaMessage(this.userName, msgName, body, to);
-        this.webSocket.send(msg.toString());
+        var message = new msg.AcequiaMessage(this.userName, msgName, body, to);
+        this.webSocket.send(message.toString());
     }
 };
 
@@ -152,20 +152,20 @@ AcequiaClient.prototype.ws_onclose = function (evt) {
 /**
  * Default message handler for messages.  If the message is the connect message
  * and the body of the message is an error code, this method returns false.
- * @param {AcequiaMessage} msg The message to process.
+ * @param {AcequiaMessage} message The message to process.
  * @returns{boolean} False if there is an error, true otherwise.
  */
-AcequiaClient.prototype.ac_onmessage = function (msg) {
+AcequiaClient.prototype.ac_onmessage = function (message) {
     var ret = true;
-    if (msg.name === AcequiaClient.CONNECT) {
+    if (message.name === AcequiaClient.CONNECT) {
 
-        if (msg.body[0] === -1) {
-            console.error('ERROR logging in: ' + msg.body);
+        if (message.body[0] === -1) {
+            console.error('ERROR logging in: ' + message.body);
             ret = false;
         } else {
             this.setConnected(true);
         }
-    } else if (msg.name === AcequiaClient.DISCONNECT) {
+    } else if (message.name === AcequiaClient.DISCONNECT) {
         this.setConnected(false);
         this.webSocket.close();
     }
@@ -178,15 +178,16 @@ AcequiaClient.prototype.ac_onmessage = function (msg) {
  * @param {AcequiaMessage} msg The message to send.
  * @param {String} msgName The name of the message to look for in the listeners.
  */
-AcequiaClient.prototype.callListeners = function (msg, msgName) {
-
+AcequiaClient.prototype.callListeners = function (message, msgName) {
+    var i;
+    
     if (typeof(msgName) === "undefined") {
-        msgName = msg.name;
+        msgName = message.name;
     }
     
     if (msgName in this.listeners) {
         for (i in this.listeners[msgName]) {
-            this.listeners[msgName][i](msg, this);
+            this.listeners[msgName][i](message, this);
         }
     }    
 };
@@ -198,17 +199,17 @@ AcequiaClient.prototype.callListeners = function (msg, msgName) {
  * @param {Event} evt  The event object.
  */
 AcequiaClient.prototype.ws_onmessage = function (evt) {
-    var i, msg = JSON.parse(evt.data);
+    var i, message = JSON.parse(evt.data);
 
-    if (!this.ac_onmessage(msg)) {
+    if (!this.ac_onmessage(message)) {
         return;
     }
     
     // Call the message listeners.
-    this.callListeners(msg);
+    this.callListeners(message);
 
     // Call the wildcard message listeners.
-    this.callListeners(msg, "*");
+    this.callListeners(message, "*");
 };
     
 /**
