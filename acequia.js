@@ -10,7 +10,8 @@ var sys = require("sys"),
     ws = require("./vendor/websocket-server"),
     osc = require("./libs/osc.js"),
     netIP = require("./libs/netIP.js"),
-    ac = require("./client.js");
+    ac = require("./client.js"),
+    msg = require("./msg.js");
 
 var DEBUG = 1,
     INTERNAL_IP = "",
@@ -18,7 +19,7 @@ var DEBUG = 1,
     WS_PORT = 9091,
     HTTP_PORT = 9092,
     TCP_PORT = 9093,
-    TIMEOUT = 600; //Seconds before kicking idle clients.
+    TIMEOUT = 600; // Seconds before kicking idle clients.
 
 /**
  * The standard messages that the acequia system handles.
@@ -28,81 +29,24 @@ var MSG_DISCONNECT = "/disconnect";
 var MSG_GETCLIENTS = "/getClients";
 
 // The list of clients
-var clients = [];
+var clients = new ac.AcequiaClients(TIMEOUT * 1000);
 
 var oscServer, wsServer;
 
 var logger = log4js.getLogger("acequia");
 
-// The master sending function which takes a message meant for a client, decides 
-// which protocol to use, and calls the appropriate function.
-function msgSnd(to, from, title, body, tt) {
-    clients[to].send(from, title, body, tt);
-    logger.debug("Sent message " + title + " to client #" + to + " (" + clients[to].name + ")");
-}
-
-//The master function which sends messages to all clients except for exc.
-function msgSndAll(exc, mesid, data, tt) {
-    var i, name = clients[exc].name;
-    for (i = 0; i < clients.length; i += 1) {
-        if (i !== exc) {
-            clients[i].send(name, mesid, data, tt);
-        }
-    }
-}
-
 // Message routing goes here.
 function onMessage(from, to, title, body, tt) {
-    if (to === -1) {
-        msgSndAll(from, title, body, tt);
+    if (to) {
+        clients.sendTo(to, from, title, body, tt);
     } else {
-        msgSnd(to, clients[from].name, title, body, tt);
+        clients.broadcast(from, title, body, tt);
     }
 }
 
-// Often we only know the IP and Port of the sender of a message.  
-// This function translates this data into a 'usable' client ID number.
-function lookupClient(protocol, var1, var2) {
-    var i;
-    for (i = 0; i < clients.length; i += 1) {
-        if (clients[i].equals(protocol, var1, var2)) {
-            return i; 
-        }
-    }
-    return -1;
-}
-
-
-// Looks up a client based on username.
-function lookupClientUsername(usr) {
-    var i;
-    for (i = 0; i < clients.length; i += 1) {
-        if (clients[i].name === usr) {
-            return i;
-        }
-    }
-    return -1;
-}
-
-//Drops a client from the server (they disconnect, timeout, error, etc.)
-function dropClient(client, reason) {
-    if (typeof(clients[client]) === "undefined") {
-        return;
-    }
-    logger.debug("Dropped client #" + client + " (" + clients[client].name + ") from server.  (" + reason + ")");
-    clients.splice(client, 1);
-}
-
-//Kicks any clients who we have not heard from for a while.
+// Kicks any clients who we have not heard from for a while.
 function kickIdle() {
-    var time = (new Date()).getTime(), i;
-    
-    for (i = 0; i < clients.length; i += 1) {
-        if ((time - clients[i].lastMessage) > TIMEOUT * 1000) {
-            dropClient(i, "client timeout");
-            i -= 1;
-        }
-    }
+    //clients.clearExpired();
 }
 
 // Once we actually get our internal IP, we start the servers.
@@ -114,25 +58,27 @@ function startServers() {
     oscServer = dgram.createSocket("udp4");
 
     oscServer.on("message", function (msg, rinfo) {
-        var oscMsg = osc.bufferToOsc(msg);
+        var cli, oscMsg = osc.bufferToOsc(msg);
         
         switch (oscMsg.address) {
         case MSG_CONNECT:
+            // TODO:  How do you send a reject message if the user already exists?
             //the second parameter when logging in is an optional "port to send to".
             portOut = (oscMsg.data[1] > 0) ? oscMsg.data[1] : rinfo.port;
             client = new ac.OSCClient(oscMsg.data[0], rinfo.address, rinfo.port, portOut, oscServer);
-            clients.push(client);
+            clients.add(client);
             logger.debug("Added client " + oscMsg.data[0] + 
                   " (OSC@" + rinfo.address + ":" + rinfo.port + ", client #" + (clients.length - 1) + ")");
             break;
         
         case MSG_DISCONNECT:
-            dropClient(lookupClient(ac.TYP_OSC, rinfo.address, rinfo.port), "disconnect by user");
+            cli = clients.find(ac.TYP_OSC, rinfo.address, rinfo.por);
+            clients.remove(cli.name, "disconnect by user");
             break;
         
         default:
-            from = lookupClient(ac.TYP_OSC, rinfo.address, rinfo.port);
-            to = lookupClientUsername(oscMsg.data.shift());
+            from = clients.find(ac.TYP_OSC, rinfo.address, rinfo.port).name;
+            to = clients.get(oscMsg.data.shift()).name;
             title = oscMsg.address;
             tt = oscMsg.typeTags.slice(1);
             onMessage(from, to, title, oscMsg.data, tt);
@@ -144,7 +90,7 @@ function startServers() {
     // Essentially our authentication/auto-discovery method for right now.
     oscServer.on("listening", function () {
         logger.debug("oscServer is listening on " + oscServer.address().address + ":" + oscServer.address().port);
-        
+/*
         httpClient = http.createClient("80", "plasticsarcastic.com");
         request = httpClient.request("GET", "/nodejs/scrCreateServer.php?ip=" + INTERNAL_IP + 
             "&port=" + OSC_PORT, {"host" : "plasticsarcastic.com"});
@@ -157,10 +103,11 @@ function startServers() {
                 }
             });
         });
+*/
     });
 
     oscServer.on("close", function () {
-        logger.debug("oscServer closed")
+        logger.debug("oscServer closed");
     });
         
     oscServer.bind(OSC_PORT, INTERNAL_IP);
@@ -168,47 +115,43 @@ function startServers() {
     //Websocket server:
     wsServer = ws.createServer();
     wsServer.addListener("connection", function (con) {
-        logger.debug("wsServer: connection");
+        logger.trace("wsServer: connection");
         con.addListener("message", function (msg) {
-            logger.debug("connection: message " + msg);
+            logger.debug("Received message: " + msg);
             
-            var from, to,
+            var from, to, m, 
                 message = JSON.parse(msg),
                 title = message.name,
                 body  = message.body;
 
             if (title === MSG_CONNECT) {
-                //Add them to the clients list when they connect if the username is free.
-                for (i = 0; i < clients.length; i += 1) {
-                    if (clients[i].name === message.from) {
-                        wsServer.send(con.id, 
-                            JSON.stringify({"from" : "SYS", "name" : MSG_CONNECT, "body" : [-1]}));
-                        return;
-                    }
-                }
-
                 client = new ac.WebSocketClient(message.from, con.id, wsServer);
-                clients.push(client);
+                try {
+                    clients.add(client);
+                } catch (e) {
+                    m = new msg.AcequiaMessage("SYS", MSG_CONNECT, -1);
+                    wsServer.send(con.id, m.toString());
+                }
                 
+                // Send the confirmation message
                 client.send("SYS", MSG_CONNECT, 1);
-                logger.debug("Added client " + clients[clients.length - 1].name + 
-                      " (ws id " + con.id + ", client #" + (clients.length - 1) + ")");                
+
             } else {
-                from = lookupClient(ac.TYP_WS, con.id);
-                to = lookupClientUsername(message.to);
+                from = clients.find(ac.TYP_WS, con.id).name;
+                to = clients.get(message.to) ? clients.get(message.to).name : "";
 
                 switch (title) {
                 case MSG_DISCONNECT:
-                    clients[from].send("SYS", MSG_DISCONNECT, 1);
-                    dropClient(from, "disconnect by user.");
+                    clients.get(from).send("SYS", MSG_DISCONNECT, 1);
+                    clients.remove(from, "disconnect by user.");
                     break;
             
                 case MSG_GETCLIENTS:
                     clientList = [];
-                    for (i = 0; i < clients.length; i += 1) {
-                        clientList.push(clients[i].name);
+                    for (i in clients.clients) {
+                        clientList.push(clients.clients[i].name);
                     }
-                    clients[from].send("SYS", MSG_GETCLIENTS, clientList);
+                    clients.get(from).send("SYS", MSG_GETCLIENTS, clientList);
                     break;
 
                 default:
@@ -219,15 +162,24 @@ function startServers() {
         });
         
         con.addListener("close", function () {
-            dropClient(lookupClient(ac.TYP_WS, con.id), "connection closed");
+            var cli = clients.find(ac.TYP_WS, con.id);
+            if (cli) {
+                clients.remove(cli.name, "connection closed");
+            }
         });
 
         con.addListener("timeout", function () {
-            dropClient(lookupClient(ac.TYP_WS, con.id), "connection timeout");
+            var cli = clients.find(ac.TYP_WS, con.id);
+            if (cli) {
+                clients.remove(cli.name, "connection timeout");
+            }
         });
 
         con.addListener("error", function (e) {
-            dropClient(lookupClient(ac.TYP_WS, con.id), "connection error: " + e);
+            var cli = clients.find(ac.TYP_WS, con.id);
+            if (cli) {
+                clients.remove(cli.name, "connection error: " + e);
+            }
         });
     });
 
