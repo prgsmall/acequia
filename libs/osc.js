@@ -6,10 +6,10 @@ var log4js = require('../vendor/log4js-node');
 var logger = log4js.getLogger("osc");
 
 var Osc = function (addr, tt, d) {
-	this.address = addr;
-	this.typeTags = tt;
-	this.data = d;
-	return this;
+    this.address = addr;
+    this.typeTags = tt;
+    this.data = d;
+    return this;
 };
 exports.newOsc = Osc;
 
@@ -21,91 +21,114 @@ var OscBundle = function (addrs, tts, ds) {
 };
 exports.newOscBundle = OscBundle;
 
-var parseMessage = function(buffer) {
+/**
+ * Parses an OSC Message to extract the data types and type tags.
+ * @param {Buffer} buffer The buffer of data to parse
+ * @returns {Array} An array of OSC messages with a single element.
+ */
+var parseMessage = function (buffer) {
     var address = "", typeTags = "", i, j, data = [], str;
     
     i = 0;
-	while (buffer[i]) {
-		address += String.fromCharCode(buffer[i]);
-		i += 1;
-	}
-	
-	while ((i % 4) < 3) {
-	    i += 1;
-	}
-	i += 1;
-	
-	while (buffer[i]) {
-		if (buffer[i] === 'f'.charCodeAt(0) || buffer[i] === 'i'.charCodeAt(0) || 
-		    buffer[i] === 's'.charCodeAt(0)) { 
-		    typeTags += String.fromCharCode(buffer[i]);
-		}
-		i += 1;
-	}
-	while ((i % 4) < 3) {
-	    i += 1;
-	}
-	i += 1;
-	
-	for (j = 0; j < typeTags.length; j += 1) {
-		if (typeTags.charAt(j) === 'i') {
-		    data.push(buffer.readInt32BE(i)); 
-		    i += 4;
-		} else if (typeTags.charAt(j) === 'f') {
-		    data.push(buffer.readFloatBE(i)); 
-		    i += 4;
-		} else if (typeTags.charAt(j) === 's') {
-			str = '';
-			while (buffer[i]) {
-			    str += String.fromCharCode(buffer[i]);
-			    i += 1;
-			}
-			data.push(str);
-			while ((i % 4) !== 0) {
-			    i += 1;
-			}
-		}
-	}
-	
-	return new Osc(address, typeTags, data);
-}
-
-exports.bufferToOsc = function (buffer) {
-	var address = "",  typeTags = "", data = [],  i = 0, j, str, size, ele, eles = [];
-	
-	// Determine if this is a bundle or a message
-	if (String.fromCharCode(buffer[0]) === "#") {
-	    
-	    var buff = new Buffer(buffer.length);
-	    for (j = 0; j < buffer.length; j += 1) {
-	        buff[j] = buffer[j];
-	    }
-	    
-	    address = buff.toString("utf8", 0, 7);
-	    i += 8;
-	    
-    	// Skip the time tag
-    	i += 8;
-    	
-    	while (i < buff.length) {
-        	// Read the size of the first bundle
-        	size = buff.readUInt32BE(i);
-        	i += 4;
-    	
-    	    ele = "";
-        	for (j = 0; j < size; j += 1) {
-        		ele += String.fromCharCode(buff[j + i]);
-        	}
-        	i += j;
-        	eles.push(parseMessage(new Buffer(ele)));
+    while (buffer[i]) {
+        address += String.fromCharCode(buffer[i]);
+        i += 1;
+    }
+    
+    while ((i % 4) < 3) {
+        i += 1;
+    }
+    i += 1;
+    
+    while (buffer[i]) {
+        if (buffer[i] === 'f'.charCodeAt(0) || buffer[i] === 'i'.charCodeAt(0) || 
+            buffer[i] === 's'.charCodeAt(0)) { 
+            typeTags += String.fromCharCode(buffer[i]);
         }
+        i += 1;
+    }
+    while ((i % 4) < 3) {
+        i += 1;
+    }
+    i += 1;
+    
+    for (j = 0; j < typeTags.length; j += 1) {
+        if (typeTags.charAt(j) === 'i') {
+            data.push(buffer.readInt32BE(i)); 
+            i += 4;
+        } else if (typeTags.charAt(j) === 'f') {
+            data.push(buffer.readFloatBE(i)); 
+            i += 4;
+        } else if (typeTags.charAt(j) === 's') {
+            str = '';
+            while (buffer[i]) {
+                str += String.fromCharCode(buffer[i]);
+                i += 1;
+            }
+            data.push(str);
+            while ((i % 4) !== 0) {
+                i += 1;
+            }
+        }
+    }
+    
+    return [new Osc(address, typeTags, data)];
+};
+
+/**
+ * Parses an OSC Bundle to extract the messages contained therein.
+ * @param {Buffer} buffer The buffer of data to parse
+ * @returns {Array} An array of OSC messages
+ */
+var parseBundle = function(buffer) {
+    var i = 0, j, size, packet, ret = [], msgs = [];
+
+    // Skip the name ("#bundle\0") and time tag (8 bytes)
+    i += 16;
+    
+    while (i < buffer.length) {
+        // Read the size of the first packet
+        size = buffer.readUInt32BE(i);
+        i += 4;
+    
+        packet = "";
+        for (j = 0; j < size; j += 1) {
+            packet += String.fromCharCode(buffer[j + i]);
+        }
+        i += j;
         
-        return eles;
-	} else {
-	    return[parseMessage(buffer)];
-	}
-	
-	
+        msgs = parsePacket(new Buffer(packet));
+        
+        for (j in msgs) {
+            ret.push(msgs[j]);
+        }
+    }
+    
+    return ret;
+};
+
+/**
+ * Parses a single OSC packet.
+ * @param {Buffer} buffer The buffer of data to parse
+ * @returns {Array} An array of OSC messages
+ */
+var parsePacket = function (buffer) {
+    // Determine if this is a bundle or a message
+    if (String.fromCharCode(buffer[0]) === "#") {
+        return parseBundle(buffer)
+    } else {
+        return parseMessage(buffer);
+    }
+};
+
+/**
+ * Converts a buffer of data, returned by dgram to an array of OSC messages
+ * @param {SlowBuffer} buffer The buffer of data to parse
+ * @returns {Array} An array of OSC messages 
+ */
+exports.bufferToOsc = function (slowBuffer) {
+    // Convert the SlowBuffer to a Buffer and parse the packet
+    return parsePacket(new Buffer(slowBuffer));
 };
 
 exports.bufferToOscBundle = function (buffer) {
@@ -181,54 +204,54 @@ exports.bufferToOscBundle = function (buffer) {
 exports.oscToBuffer = function (osc) {
     var byteArr, buffer, str, offset, i, j;
     
-	if (typeof osc.data === "undefined") {
-	    osc.data = [];
-	}
-	
-	// This could be more efficient:
-	buffer = new Buffer(osc.address.length + osc.typeTags.length + (osc.data.length * 4) + 80);
-	str = osc.address + '\0';
-	while ((str.length % 4) !== 0) {
-	    str += '\0';
-	}
-	buffer.write(str);
-	offset = str.length;
-	
-	str = ',' + osc.typeTags + '\0';
-	while ((str.length % 4) !== 0) {
-	    str += '\0';
-	}
-	buffer.write(str, offset);
-	offset += str.length;
-	
-	/*osc.typeTags=osc.typeTags.replace(/find/s,'c');
-	var byteArr=jspack.Pack(osc.typeTags,osc.data);
-	console.log(byteArr);
-	for (var i=0; i<byteArr.length; i++) {
-		buffer[offset+i]=byteArr[i];
-	}*/
-	
-	for (i = 0; i < osc.data.length; i += 1) {
-		if (osc.typeTags.charAt(i) === 'i' || osc.typeTags.charAt(i) === 'f') {
-			byteArr = jspack.Pack(osc.typeTags.charAt(i), [osc.data[i]]);
-			for (j = 0; j < byteArr.length; j += 1) {
-				buffer[offset] = byteArr[j];
-				offset += 1;
-			}
-		} else { //string
-			for (j = 0; j < osc.data[i].length; j += 1) {
-				buffer[offset] = osc.data[i].charCodeAt(j);
-				offset += 1;
-			}
-			buffer[offset] += '\0';
-			offset += 1;
-			while ((offset % 4) !== 0) {
-			    buffer[offset] += '\0'; 
-			    offset += 1;
-			}
-		}
-	}
-	return buffer.slice(0, offset);
+    if (typeof osc.data === "undefined") {
+        osc.data = [];
+    }
+    
+    // This could be more efficient:
+    buffer = new Buffer(osc.address.length + osc.typeTags.length + (osc.data.length * 4) + 80);
+    str = osc.address + '\0';
+    while ((str.length % 4) !== 0) {
+        str += '\0';
+    }
+    buffer.write(str);
+    offset = str.length;
+    
+    str = ',' + osc.typeTags + '\0';
+    while ((str.length % 4) !== 0) {
+        str += '\0';
+    }
+    buffer.write(str, offset);
+    offset += str.length;
+    
+    /*osc.typeTags=osc.typeTags.replace(/find/s,'c');
+    var byteArr=jspack.Pack(osc.typeTags,osc.data);
+    console.log(byteArr);
+    for (var i=0; i<byteArr.length; i++) {
+        buffer[offset+i]=byteArr[i];
+    }*/
+    
+    for (i = 0; i < osc.data.length; i += 1) {
+        if (osc.typeTags.charAt(i) === 'i' || osc.typeTags.charAt(i) === 'f') {
+            byteArr = jspack.Pack(osc.typeTags.charAt(i), [osc.data[i]]);
+            for (j = 0; j < byteArr.length; j += 1) {
+                buffer[offset] = byteArr[j];
+                offset += 1;
+            }
+        } else { //string
+            for (j = 0; j < osc.data[i].length; j += 1) {
+                buffer[offset] = osc.data[i].charCodeAt(j);
+                offset += 1;
+            }
+            buffer[offset] += '\0';
+            offset += 1;
+            while ((offset % 4) !== 0) {
+                buffer[offset] += '\0'; 
+                offset += 1;
+            }
+        }
+    }
+    return buffer.slice(0, offset);
 };
 
 exports.oscBundleToBuffer = function (bundle) { 
