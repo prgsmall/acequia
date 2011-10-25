@@ -3,7 +3,7 @@
 // Imports and globals.
 var sys = require("sys"),
     http = require("http"),
-    URL = require("url"),
+    url = require("url"),
     net = require("net"),
     log4js = require('./vendor/log4js-node'),
     dgram = require("dgram"),
@@ -11,7 +11,8 @@ var sys = require("sys"),
     osc = require("./libs/osc.js"),
     netIP = require("./libs/netIP.js"),
     ac = require("./client.js"),
-    msg = require("./msg.js");
+    msg = require("./msg.js"),
+    querystring = require("querystring");
 
 var DEBUG = 1,
     INTERNAL_IP = "",
@@ -19,19 +20,12 @@ var DEBUG = 1,
     WS_PORT = 9091,
     HTTP_PORT = 9092,
     TCP_PORT = 9093,
-    TIMEOUT = 600; // Seconds before kicking idle clients.
-
-/**
- * The standard messages that the acequia system handles.
- */
-var MSG_CONNECT    = "/connect";
-var MSG_DISCONNECT = "/disconnect";
-var MSG_GETCLIENTS = "/getClients";
+    TIMEOUT = 600000; // Seconds before kicking idle clients.
 
 // The list of clients
 var clients = new ac.AcequiaClients(TIMEOUT * 1000);
 
-var oscServer, wsServer;
+var oscServer, wsServer, httpServer;
 
 var logger = log4js.getLogger("acequia");
 
@@ -46,7 +40,7 @@ function onMessage(from, to, title, body, tt) {
 
 // Kicks any clients who we have not heard from for a while.
 function kickIdle() {
-    //clients.clearExpired();
+    clients.clearExpired();
 }
 
 // Once we actually get our internal IP, we start the servers.
@@ -58,31 +52,37 @@ function startServers() {
     oscServer = dgram.createSocket("udp4");
 
     oscServer.on("message", function (msg, rinfo) {
-        var cli, oscMsg = osc.bufferToOsc(msg);
+        var cli, oscMsgs = osc.bufferToOsc(msg),  oscMsg, i;
         
-        switch (oscMsg.address) {
-        case MSG_CONNECT:
-            // TODO:  How do you send a reject message if the user already exists?
-            //the second parameter when logging in is an optional "port to send to".
-            portOut = (oscMsg.data[1] > 0) ? oscMsg.data[1] : rinfo.port;
-            client = new ac.OSCClient(oscMsg.data[0], rinfo.address, rinfo.port, portOut, oscServer);
-            clients.add(client);
-            logger.debug("Added client " + oscMsg.data[0] + 
-                  " (OSC@" + rinfo.address + ":" + rinfo.port + ", client #" + (clients.length - 1) + ")");
-            break;
+        for (i in oscMsgs) {
+            oscMsg = oscMsgs[i];
+            logger.debug(JSON.stringify(oscMsg));
+            switch (oscMsg.address) {
+            case msg.MSG_CONNECT:
+                // TODO:  How do you send a reject message if the user already exists?
+                //the second parameter when logging in is an optional "port to send to".
+                portOut = (oscMsg.data[1] > 0) ? oscMsg.data[1] : rinfo.port;
+                client = new ac.OSCClient(oscMsg.data[0], rinfo.address, rinfo.port, portOut, oscServer);
+                clients.add(client);
+                logger.debug("Added client " + oscMsg.data[0] + 
+                      " (OSC@" + rinfo.address + ":" + rinfo.port + ", client #" + (clients.length - 1) + ")");
+                break;
         
-        case MSG_DISCONNECT:
-            cli = clients.find(ac.TYP_OSC, rinfo.address, rinfo.por);
-            clients.remove(cli.name, "disconnect by user");
-            break;
+            case msg.MSG_DISCONNECT:
+                cli = clients.find(ac.TYP_OSC, rinfo.address, rinfo.por);
+                if (cli) {
+                    clients.remove(cli.name, "disconnect by user");
+                }
+                break;
         
-        default:
-            from = clients.find(ac.TYP_OSC, rinfo.address, rinfo.port).name;
-            to = clients.get(oscMsg.data.shift()).name;
-            title = oscMsg.address;
-            tt = oscMsg.typeTags.slice(1);
-            onMessage(from, to, title, oscMsg.data, tt);
-            break;
+            default:
+                from = ""; // clients.find(ac.TYP_OSC, rinfo.address, rinfo.port).name;
+                to = ""; // clients.get(oscMsg.data.shift()).name;
+                title = oscMsg.address;
+                tt = oscMsg.typeTags.slice(1);
+                onMessage(from, to, title, oscMsg.data, tt);
+                break;
+            }
         }
     });
     
@@ -119,39 +119,39 @@ function startServers() {
         con.addListener("message", function (msg) {
             logger.debug("Received message: " + msg);
             
-            var from, to, m, 
+            var from, to, m, name, cli,
                 message = JSON.parse(msg),
                 title = message.name,
                 body  = message.body;
 
-            if (title === MSG_CONNECT) {
+            if (title === msg.MSG_CONNECT) {
                 client = new ac.WebSocketClient(message.from, con.id, wsServer);
                 try {
                     clients.add(client);
                 } catch (e) {
-                    m = new msg.AcequiaMessage("SYS", MSG_CONNECT, -1);
+                    m = new msg.AcequiaMessage("SYS", msg.MSG_CONNECT, -1);
                     wsServer.send(con.id, m.toString());
                 }
                 
                 // Send the confirmation message
-                client.send("SYS", MSG_CONNECT, 1);
+                client.send("SYS", msg.MSG_CONNECT, 1);
 
             } else {
                 from = clients.find(ac.TYP_WS, con.id).name;
                 to = clients.get(message.to) ? clients.get(message.to).name : "";
 
                 switch (title) {
-                case MSG_DISCONNECT:
-                    clients.get(from).send("SYS", MSG_DISCONNECT, 1);
+                case msg.MSG_DISCONNECT:
+                    clients.get(from).send("SYS", msg.MSG_DISCONNECT, 1);
                     clients.remove(from, "disconnect by user.");
                     break;
             
-                case MSG_GETCLIENTS:
+                case msg.MSG_GETCLIENTS:
                     clientList = [];
-                    for (i in clients.clients) {
-                        clientList.push(clients.clients[i].name);
+                    for (cli in clients.clients) {
+                        clientList.push(clients.clients[cli].name);
                     }
-                    clients.get(from).send("SYS", MSG_GETCLIENTS, clientList);
+                    clients.get(from).send("SYS", msg.MSG_GETCLIENTS, clientList);
                     break;
 
                 default:
@@ -212,26 +212,7 @@ function startServers() {
     });
     
     wsServer.listen(WS_PORT);
-/*
-    // HTTP Server
-    http.createServer(function (req, res) {
-        var pathName = URL.parse(req.url, true).pathname;
-        console.log("HTTP server received " + pathName);
-        res.writeHead(200, {"Content-Type": "text/plain"});
-        switch (pathName) {
-        case MSG_CONNECT:
-            break;
-        case MSG_DISCONNECT:
-            break;
-        case MSG_GETCLIENTS:
-            break;
-        default:
-            break;
-        }
-        res.end(req.body + "  Hello World\n");
-    }).listen(HTTP_PORT);
-    debug("httpServer is listening on " + INTERNAL_IP + ":" + HTTP_PORT);
-*/
+
     setInterval(kickIdle, 1000);
 }
 

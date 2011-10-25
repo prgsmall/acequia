@@ -1,5 +1,12 @@
 /*globals exports */
 (function (exports) {
+    
+    /**
+     * The standard messages that the acequia system handles.
+     */
+    var MSG_CONNECT    = "/connect";
+    var MSG_DISCONNECT = "/disconnect";
+    var MSG_GETCLIENTS = "/getClients";
 
     /**
      * Class to define the json messages to and from from the acequia client.
@@ -50,5 +57,9 @@
     };
 
     exports.AcequiaMessage = AcequiaMessage;
+    exports.MSG_CONNECT    = MSG_CONNECT;
+    exports.MSG_DISCONNECT = MSG_DISCONNECT;
+    exports.MSG_GETCLIENTS = MSG_GETCLIENTS;
+    
 
-})(typeof(exports) === 'undefined' ? this['msg'] = {} : exports);
+})(typeof(exports) === "undefined" ? this["msg"] = {} : exports);

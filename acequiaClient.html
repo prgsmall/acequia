@@ -33,7 +33,7 @@
             var ac = new AcequiaClient("ws://localhost:9091", "user" + Math.random());
             ac.addMessageListener(AcequiaClient.CONNECT, onconnect);
             ac.addMessageListener(AcequiaClient.GETCLIENTS, ongetClients);
-            ac.addMessageListener('test', ontest);
+            ac.addMessageListener('*', ontest);
             ac.addConnectionChangeHandler(onconnectionChanged);
             
             $(document).ready( function(){

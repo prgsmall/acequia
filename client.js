@@ -13,12 +13,34 @@ var log4js = require('./vendor/log4js-node'),
 
 var TYP_OSC = "OSC",
     TYP_WS = "WEBSOCKET",
-    TYPE_AJAX = "AJAX";
+    TYP_HTTP = "HTTP",
+    TYP_TCP = "TCP";
 
 var logger = log4js.getLogger("client");
 
+var dumpObject = function (obj, className) {
+    var i, ret;
+    if (typeof(className) === "undefined") {
+        className = "Object";
+    }
+    
+    ret  = "[object " + className + "] {";
+    
+    for (i in obj) {
+        if (typeof(obj[i]) !== "function") {
+            ret += " " + i + ": " + obj[i].toString() + ",";
+        }
+    }
+    ret = ret.substring(0, ret.length - 2); 
+    ret += "}";
+    return ret;
+};
+
 /**
  * The base class for all acequia clients.
+ * @param {String} name The unique name of the client.
+ * @param {String} prot The protocol of the client
+ * @param {Object} server The server to service the client.
  */
 var AcequiaClient = function (name, prot, server) {
     this.name = name;
@@ -31,7 +53,10 @@ AcequiaClient.prototype.equals = function (prot) {
     return (this.protocol === prot);
 };
 
-AcequiaClient.prototype.update = function (prot) {
+/**
+ * Updates the last message time
+ */
+AcequiaClient.prototype.update = function () {
     this.lastMessage = (new Date()).getTime();
 };
 
@@ -40,7 +65,6 @@ AcequiaClient.prototype.update = function (prot) {
  * @param {String} name The unique user name associated with the client.
  * @param {String} id The id assigned to the connection by the websocket
  * @param {Object} server The WebSocketServer that will be used to send the message.
- * server
  */
 var WebSocketClient = function (name, id, server) {
     this.id = id;
@@ -57,6 +81,10 @@ WebSocketClient.prototype.send = function (from, name, body) {
     var message = new msg.AcequiaMessage(from, name, body);
     this.server.send(this.id, message.toString());
     this.update();
+};
+
+WebSocketClient.prototype.toString = function () {
+    return dumpObject(this, "WebSocketClient");
 };
 
 
@@ -93,10 +121,21 @@ OSCClient.prototype.send = function (from, name, body, tt) {
     this.update();
 };
 
+OSCClient.prototype.toString = function () {
+    return dumpObject(this, "OSCClient");
+};
+
+var HttpClient = function(name, server) {
+    AcequiaClient.call(this, name, TYP_HTTP, server);    
+};
+HttpClient.prototype = new AcequiaClient();
+
 /**
  * Object that holds the list of clients and performs operations on
  * the clients.  This list of clients is an associative array, indexed by the name of
  * the client, making the name of the client unique.
+ * @param {Integer} timeout The number of milliseconds the a client can last without
+ * a keep-alive message.
  */
 var AcequiaClients = function (timeout) {
     this.timeout = timeout;
@@ -149,7 +188,6 @@ AcequiaClients.prototype.find = function () {
     return null;
 };
 
-
 /**
  * Gets a client with the given name.
  * @param {String} name The name of the client to retrieve.
@@ -165,14 +203,15 @@ AcequiaClients.prototype.get = function (name) {
  */
 AcequiaClients.prototype.add = function (client) {
     if (client.name in this.clients) {
-        throw new Error("A client with this name already exists");
+        throw new Error("A client with this name (" + client.name + ") already exists");
     }
     this.clients[client.name] = client;
 };
 
 /**
  * Drops a client from the server (they disconnect, timeout, error, etc.)
- * @param {String} name 
+ * @param {String} name The name of the client to remove
+ * @param {String} reason The reason that the client was dropped.
  */
 AcequiaClients.prototype.remove = function (name, reason) {
     if (name in this.clients) {
@@ -200,11 +239,10 @@ AcequiaClients.prototype.clearExpired = function () {
     }
 };
 
-
-
 // Export the entities that Acequia needs
 exports.TYP_OSC = TYP_OSC;
 exports.TYP_WS = TYP_WS;
+exports.TYP_HTTP = TYP_HTTP;
 exports.WebSocketClient = WebSocketClient;
 exports.OSCClient = OSCClient;
 exports.AcequiaClients = AcequiaClients;

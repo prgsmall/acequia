@@ -1,6 +1,9 @@
 /*globals require exports */
 var jspack = require('../vendor/node-jspack/jspack').jspack;
 var Buffer = require('buffer').Buffer;
+var log4js = require('../vendor/log4js-node');
+
+var logger = log4js.getLogger("osc");
 
 var Osc = function (addr, tt, d) {
 	this.address = addr;
@@ -18,9 +21,10 @@ var OscBundle = function (addrs, tts, ds) {
 };
 exports.newOscBundle = OscBundle;
 
-exports.bufferToOsc = function (buffer) {
-	var address = '',  typeTags = '', data = [],  i = 0, j, str;
-	
+var parseMessage = function(buffer) {
+    var address = "", typeTags = "", i, j, data = [], str;
+    
+    i = 0;
 	while (buffer[i]) {
 		address += String.fromCharCode(buffer[i]);
 		i += 1;
@@ -45,10 +49,10 @@ exports.bufferToOsc = function (buffer) {
 	
 	for (j = 0; j < typeTags.length; j += 1) {
 		if (typeTags.charAt(j) === 'i') {
-		    data.push(jspack.Unpack('i', buffer, i)); 
+		    data.push(buffer.readInt32BE(i)); 
 		    i += 4;
 		} else if (typeTags.charAt(j) === 'f') {
-		    data.push(jspack.Unpack('f', buffer, i)); 
+		    data.push(buffer.readFloatBE(i)); 
 		    i += 4;
 		} else if (typeTags.charAt(j) === 's') {
 			str = '';
@@ -64,6 +68,44 @@ exports.bufferToOsc = function (buffer) {
 	}
 	
 	return new Osc(address, typeTags, data);
+}
+
+exports.bufferToOsc = function (buffer) {
+	var address = "",  typeTags = "", data = [],  i = 0, j, str, size, ele, eles = [];
+	
+	// Determine if this is a bundle or a message
+	if (String.fromCharCode(buffer[0]) === "#") {
+	    
+	    var buff = new Buffer(buffer.length);
+	    for (j = 0; j < buffer.length; j += 1) {
+	        buff[j] = buffer[j];
+	    }
+	    
+	    address = buff.toString("utf8", 0, 7);
+	    i += 8;
+	    
+    	// Skip the time tag
+    	i += 8;
+    	
+    	while (i < buff.length) {
+        	// Read the size of the first bundle
+        	size = buff.readUInt32BE(i);
+        	i += 4;
+    	
+    	    ele = "";
+        	for (j = 0; j < size; j += 1) {
+        		ele += String.fromCharCode(buff[j + i]);
+        	}
+        	i += j;
+        	eles.push(parseMessage(new Buffer(ele)));
+        }
+        
+        return eles;
+	} else {
+	    return[parseMessage(buffer)];
+	}
+	
+	
 };
 
 exports.bufferToOscBundle = function (buffer) {

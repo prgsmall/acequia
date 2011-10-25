@@ -1,4 +1,4 @@
-/*global WebSocket console AcequiaMessage*/
+/*global WebSocket console AcequiaMessage ServerSocket*/
 
 /**
  * Creates an event callback by wrapping the object with a closure.
@@ -19,27 +19,30 @@ var objCallback = function (obj, func) {
  * @param {String} userName The user name, used to uniquely identify this user.
  */
 var AcequiaClient = function (uri, userName) {
-    var m_connected = false;
+    var m_connected = false,
+        m_connectionChangeHandlers = [];
     
     this.isConnected = function () {
         return m_connected;
     };
     
+    this.addConnectionChangeHandler = function (handler) {
+        m_connectionChangeHandlers.push(handler);
+    };
+
     this.setConnected = function (connected) {
         var idx;
         m_connected = connected;
-        for (idx in this.connectionChangeHandlers) {
-            this.connectionChangeHandlers[idx](connected);
+        for (idx in m_connectionChangeHandlers) {
+            m_connectionChangeHandlers[idx](connected);
         }
     };
 
     this.uri = uri;
     this.userName = userName;
-    this.webSocket = null;
+    this.socket = null;
     
-    this.listeners = {};
-    
-    this.connectionChangeHandlers = [];
+    this.listeners = {};    
 };
 
 /**
@@ -82,10 +85,6 @@ AcequiaClient.prototype.removeMessageListener = function (msgName, callback) {
     this.listeners[msgName].splice(idx, 1);
 };
 
-AcequiaClient.prototype.addConnectionChangeHandler = function (handler) {
-    this.connectionChangeHandlers.push(handler);
-};
-
 /**
  * Connects to the Acequia server by creating a new web socket connection;
  */
@@ -93,11 +92,11 @@ AcequiaClient.prototype.connect = function () {
     if (this.isConnected()) {
         console.error("AcequiaClient.connect: client is already connected");
     } else {
-        this.webSocket = new WebSocket(this.uri);
-        this.webSocket.onopen    = objCallback(this, "ws_onopen");
-        this.webSocket.onclose   = objCallback(this, "ws_onclose");
-        this.webSocket.onmessage = objCallback(this, "ws_onmessage");
-        this.webSocket.onerror   = objCallback(this, "ws_onerror");
+        this.socket = new WebSocket(this.uri);
+        this.socket.onopen    = objCallback(this, "ws_onopen");
+        this.socket.onclose   = objCallback(this, "ws_onclose");
+        this.socket.onerror   = objCallback(this, "ws_onerror");
+        this.socket.onmessage = objCallback(this, "ws_onmessage");
     }
 };
 
@@ -126,7 +125,7 @@ AcequiaClient.prototype.send = function (msgName, body, to) {
         console.error("AcequiaClient.send " + msgName + ": client is not connected");
     } else {
         var message = new msg.AcequiaMessage(this.userName, msgName, body, to);
-        this.webSocket.send(message.toString());
+        this.socket.send(message.toString());
     }
 };
 
@@ -145,7 +144,7 @@ AcequiaClient.prototype.ws_onopen = function (evt) {
  * @param {Event} evt  The event object.
  */
 AcequiaClient.prototype.ws_onclose = function (evt) {
-    this.webSocket = null;
+    this.socket = null;
     this.setConnected(false);
 };
 
@@ -167,7 +166,7 @@ AcequiaClient.prototype.ac_onmessage = function (message) {
         }
     } else if (message.name === AcequiaClient.DISCONNECT) {
         this.setConnected(false);
-        this.webSocket.close();
+        this.socket.close();
     }
     
     return ret;
@@ -221,5 +220,5 @@ AcequiaClient.prototype.ws_onerror = function (evt) {
     console.error("WebSocket Error: " + evt.data);
     this.disconnect();
     this.setConnected(false);
-    this.webSocket.close();
+    this.socket.close();
 };
