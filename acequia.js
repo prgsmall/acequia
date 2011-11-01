@@ -16,14 +16,13 @@ var DEBUG = 1,
     INTERNAL_IP = "",
     OSC_PORT = 9090,
     WS_PORT = 9091,
-    HTTP_PORT = 9092,
-    TCP_PORT = 9093,
+    TCP_PORT = 9092,
     TIMEOUT = 600000; // Seconds before kicking idle clients.
 
 // The list of clients
 var clients = new ac.AcequiaClients(TIMEOUT * 1000);
 
-var oscServer, wsServer;
+var oscServer, wsServer, tcpServer;
 
 var logger = log4js.getLogger("acequia");
 
@@ -159,6 +158,23 @@ function startServers() {
             }
         });
     });
+
+    // Setup a tcp server
+    tcpServer = net.createServer(function (socket) {
+
+        socket.addListener("connect", function () {
+            logger.debug("Connection from " + socket.remoteAddress);
+        });
+        
+        socket.addListener("data", function(data) {
+            
+        });
+
+    });
+
+    tcpServer.listen(TCP_PORT, INTERNAL_IP);
+
+    logger.debug("TCP erver is listening on " + INTERNAL_IP + ":" + TCP_PORT);
 
     setInterval(kickIdle, 1000);
 }
