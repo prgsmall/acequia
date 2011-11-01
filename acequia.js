@@ -1,13 +1,11 @@
 /*global console process require setInterval*/
 
 // Imports and globals.
-var sys = require("sys"),
-    http = require("http"),
+var http = require("http"),
     url = require("url"),
     net = require("net"),
     log4js = require('./vendor/log4js-node'),
     dgram = require("dgram"),
-    ws = require("./vendor/websocket-server"),
     osc = require("./libs/osc.js"),
     netIP = require("./libs/netIP.js"),
     ac = require("./client.js"),
@@ -25,7 +23,7 @@ var DEBUG = 1,
 // The list of clients
 var clients = new ac.AcequiaClients(TIMEOUT * 1000);
 
-var oscServer, wsServer, httpServer;
+var oscServer, wsServer;
 
 var logger = log4js.getLogger("acequia");
 
@@ -45,8 +43,8 @@ function kickIdle() {
 
 // Once we actually get our internal IP, we start the servers.
 function startServers() {
-    var i,  from, to, title, tt, client, portOut,
-    httpClient, request, clientList;
+    var i, from, to, title, tt, client, portOut,
+    request, clientList;
 
     //OSC Server.
     oscServer = dgram.createSocket("udp4");
@@ -90,20 +88,6 @@ function startServers() {
     // Essentially our authentication/auto-discovery method for right now.
     oscServer.on("listening", function () {
         logger.debug("oscServer is listening on " + oscServer.address().address + ":" + oscServer.address().port);
-/*
-        httpClient = http.createClient("80", "plasticsarcastic.com");
-        request = httpClient.request("GET", "/nodejs/scrCreateServer.php?ip=" + INTERNAL_IP + 
-            "&port=" + OSC_PORT, {"host" : "plasticsarcastic.com"});
-        request.end();
-        request.on("response", function (response) {
-            response.setEncoding("utf8");
-            response.on("data", function (txt) {
-                if (txt === "0") {
-                    throw new Error("Couldn't create server.\n");
-                }
-            });
-        });
-*/
     });
 
     oscServer.on("close", function () {
@@ -112,106 +96,69 @@ function startServers() {
         
     oscServer.bind(OSC_PORT, INTERNAL_IP);
 
-    //Websocket server:
-    wsServer = ws.createServer();
-    wsServer.addListener("connection", function (con) {
-        logger.trace("wsServer: connection");
-        con.addListener("message", function (msg) {
-            logger.debug("Received message: " + msg);
-            
-            var from, to, m, name, cli,
-                message = JSON.parse(msg),
-                title = message.name,
-                body  = message.body;
+    // Websocket server:
+    wsServer = require('socket.io').listen(WS_PORT);
 
-            if (title === msg.MSG_CONNECT) {
-                client = new ac.WebSocketClient(message.from, con.id, wsServer);
+//    wsServer.enable('browser client minification');  // send minified client
+    wsServer.enable('browser client etag');          // apply etag caching logic based on version number
+    wsServer.enable('browser client gzip');          // gzip the file
+    wsServer.set('log level', 1);                    // reduce logging
+    wsServer.set('transports', [                     // enable all transports (optional if you want flashsocket)
+        'websocket',
+        'flashsocket',
+        'htmlfile',
+        'xhr-polling',
+        'jsonp-polling'
+    ]);
+
+    wsServer.sockets.on('connection', function (socket) {
+        
+        logger.debug(socket.id + " Connected");
+        socket.on('message', function (data) {
+            logger.debug(this.id + " Received message: " + data);
+            
+            var message = JSON.parse(data);
+
+            switch (message.name) {
+            case msg.MSG_CONNECT:
+                client = new ac.WebSocketClient(message.from, this.id, socket);
                 try {
                     clients.add(client);
                 } catch (e) {
-                    m = new msg.AcequiaMessage("SYS", msg.MSG_CONNECT, -1);
-                    wsServer.send(con.id, m.toString());
+                    var m = new msg.AcequiaMessage("SYS", msg.MSG_CONNECT, -1);
+                    wsServer.emit(m.toString());
                 }
-                
-                // Send the confirmation message
                 client.send("SYS", msg.MSG_CONNECT, 1);
+                break;
 
-            } else {
-                from = clients.find(ac.TYP_WS, con.id).name;
-                to = clients.get(message.to) ? clients.get(message.to).name : "";
-
-                switch (title) {
-                case msg.MSG_DISCONNECT:
-                    clients.get(from).send("SYS", msg.MSG_DISCONNECT, 1);
-                    clients.remove(from, "disconnect by user.");
-                    break;
-            
-                case msg.MSG_GETCLIENTS:
-                    clientList = [];
-                    for (cli in clients.clients) {
-                        clientList.push(clients.clients[cli].name);
-                    }
-                    clients.get(from).send("SYS", msg.MSG_GETCLIENTS, clientList);
-                    break;
-
-                default:
-                    onMessage(from, to, title, body);
-                    break;
+            case msg.MSG_DISCONNECT:
+                clients.get(message.from).send("SYS", msg.MSG_DISCONNECT, 1);
+                clients.remove(message.from, "disconnect by user.");
+                break;
+        
+            case msg.MSG_GETCLIENTS:
+                var clientList = [], cli;
+                for (cli in clients.clients) {
+                    clientList.push(clients.clients[cli].name);
                 }
+                clients.get(message.from).send("SYS", msg.MSG_GETCLIENTS, clientList);
+                break;
+
+            default:
+                onMessage(message.from, message.to, message.name, message.body);
+                break;
             }
         });
-        
-        con.addListener("close", function () {
-            var cli = clients.find(ac.TYP_WS, con.id);
+
+        socket.on("disconnect", function () {
+            logger.debug(this.id + " Disconnected");
+            
+            var cli = clients.find(ac.TYP_WS, this.id);
             if (cli) {
                 clients.remove(cli.name, "connection closed");
             }
         });
-
-        con.addListener("timeout", function () {
-            var cli = clients.find(ac.TYP_WS, con.id);
-            if (cli) {
-                clients.remove(cli.name, "connection timeout");
-            }
-        });
-
-        con.addListener("error", function (e) {
-            var cli = clients.find(ac.TYP_WS, con.id);
-            if (cli) {
-                clients.remove(cli.name, "connection error: " + e);
-            }
-        });
     });
-
-    wsServer.addListener("listening", function () {
-        logger.debug("wsServer is listening on " + INTERNAL_IP + ":" + WS_PORT);
-    });
-    
-    wsServer.addListener("upgrade", function (con) {
-        logger.debug("wsServer: upgrade");
-    });
-    
-    wsServer.addListener("request", function (con) {
-        logger.debug("wsServer: request");
-    });
-    
-    wsServer.addListener("stream", function (con) {
-        logger.debug("wsServer: stream");
-    });
-    
-    wsServer.addListener("close", function (con) {
-        logger.debug("wsServer: close");
-    });
-    
-    wsServer.addListener("clientError", function (e) {
-        logger.debug("wsServer: clientError: " + e);
-    });
-    
-    wsServer.addListener("error", function (e) {
-        logger.debug("wsServer: error: " + e);
-    });
-    
-    wsServer.listen(WS_PORT);
 
     setInterval(kickIdle, 1000);
 }

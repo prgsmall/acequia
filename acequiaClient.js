@@ -1,4 +1,4 @@
-/*global WebSocket console AcequiaMessage ServerSocket*/
+/*global WebSocket console AcequiaMessage ServerSocket io msg*/
 
 /**
  * Creates an event callback by wrapping the object with a closure.
@@ -37,28 +37,13 @@ var AcequiaClient = function (uri, userName) {
             m_connectionChangeHandlers[idx](connected);
         }
     };
-
+    
     this.uri = uri;
     this.userName = userName;
     this.socket = null;
     
     this.listeners = {};    
 };
-
-/**
- * {String} The connect command that will be sent to and receieved from acequia.
- */
-AcequiaClient.CONNECT = "/connect";
-
-/**
- * {String} The disconnect command that will be sent to and receieved from acequia.
- */
-AcequiaClient.DISCONNECT = "/disconnect";
-
-/**
- * {String} The getClients command that will be sent to and receieved from acequia.
- */
-AcequiaClient.GETCLIENTS = "/getClients";
 
 /**
  * Adds a listener for the message with the message name.
@@ -89,14 +74,9 @@ AcequiaClient.prototype.removeMessageListener = function (msgName, callback) {
  * Connects to the Acequia server by creating a new web socket connection;
  */
 AcequiaClient.prototype.connect = function () {
-    if (this.isConnected()) {
-        console.error("AcequiaClient.connect: client is already connected");
-    } else {
-        this.socket = new WebSocket(this.uri);
-        this.socket.onopen    = objCallback(this, "ws_onopen");
-        this.socket.onclose   = objCallback(this, "ws_onclose");
-        this.socket.onerror   = objCallback(this, "ws_onerror");
-        this.socket.onmessage = objCallback(this, "ws_onmessage");
+    if (!this.socket || (!this.socket.socket.connected && !this.socket.socket.connecting)) {
+        this.socket = io.connect(this.uri);
+        this.socket.on("connect", objCallback(this, "onConnect"));
     }
 };
 
@@ -104,14 +84,14 @@ AcequiaClient.prototype.connect = function () {
  * Sends the disconnect message to the Acequia server.
  */
 AcequiaClient.prototype.disconnect = function () {
-    this.send(AcequiaClient.DISCONNECT);
+    this.send(msg.MSG_DISCONNECT);
 };
 
 /**
  * Sends the getClients message to the Acequia server.
  */
 AcequiaClient.prototype.getClients = function () {
-    this.send(AcequiaClient.GETCLIENTS);
+    this.send(msg.MSG_GETCLIENTS);
 };
 
 /**
@@ -121,7 +101,7 @@ AcequiaClient.prototype.getClients = function () {
  * @param {String} to The name of the client that will receive the message.
  */
 AcequiaClient.prototype.send = function (msgName, body, to) {
-    if (msgName !== AcequiaClient.CONNECT && !this.isConnected()) {
+    if (msgName !== msg.MSG_CONNECT && !this.isConnected()) {
         console.error("AcequiaClient.send " + msgName + ": client is not connected");
     } else {
         var message = new msg.AcequiaMessage(this.userName, msgName, body, to);
@@ -130,12 +110,14 @@ AcequiaClient.prototype.send = function (msgName, body, to) {
 };
 
 /**
- * Handles the onopen event from the WebSocket.  This method sends the connect
+ * Handles the connect event from the WebSocket.  This method sends the connect
  * message to the Acequia client.
  * @param {Event} evt  The event object.
  */
-AcequiaClient.prototype.ws_onopen = function (evt) {
-    this.send(AcequiaClient.CONNECT);
+AcequiaClient.prototype.onConnect = function (evt) {
+    this.socket.on("disconnect", objCallback(this, "onDisconnect"));
+    this.socket.on("message",    objCallback(this, "onMessage"));
+    this.send(msg.MSG_CONNECT);
 };
 
 /**
@@ -143,9 +125,9 @@ AcequiaClient.prototype.ws_onopen = function (evt) {
  * member to null.
  * @param {Event} evt  The event object.
  */
-AcequiaClient.prototype.ws_onclose = function (evt) {
-    this.socket = null;
+AcequiaClient.prototype.onDisconnect = function (evt) {
     this.setConnected(false);
+    this.socket = null;
 };
 
 /**
@@ -156,7 +138,7 @@ AcequiaClient.prototype.ws_onclose = function (evt) {
  */
 AcequiaClient.prototype.ac_onmessage = function (message) {
     var ret = true;
-    if (message.name === AcequiaClient.CONNECT) {
+    if (message.name === msg.MSG_CONNECT) {
 
         if (message.body[0] === -1) {
             console.error('ERROR logging in: ' + message.body);
@@ -164,9 +146,9 @@ AcequiaClient.prototype.ac_onmessage = function (message) {
         } else {
             this.setConnected(true);
         }
-    } else if (message.name === AcequiaClient.DISCONNECT) {
+    } else if (message.name === msg.MSG_DISCONNECT) {
         this.setConnected(false);
-        this.socket.close();
+        this.socket.disconnect();
     }
     
     return ret;
@@ -197,8 +179,8 @@ AcequiaClient.prototype.callListeners = function (message, msgName) {
  * will call that as well.
  * @param {Event} evt  The event object.
  */
-AcequiaClient.prototype.ws_onmessage = function (evt) {
-    var i, message = JSON.parse(evt.data);
+AcequiaClient.prototype.onMessage = function (data) {
+    var i, message = JSON.parse(data);
 
     if (!this.ac_onmessage(message)) {
         return;
@@ -209,16 +191,4 @@ AcequiaClient.prototype.ws_onmessage = function (evt) {
 
     // Call the wildcard message listeners.
     this.callListeners(message, "*");
-};
-    
-/**
- * Handles the onerror event from the WebSocket.  This method disconnects from the acequia server
- * and closes the websocket connection, in case it is unable to send the message.
- * @param {Event} evt  The event object.
- */
-AcequiaClient.prototype.ws_onerror = function (evt) {
-    console.error("WebSocket Error: " + evt.data);
-    this.disconnect();
-    this.setConnected(false);
-    this.socket.close();
 };

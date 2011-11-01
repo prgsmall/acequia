@@ -2,13 +2,6 @@
 (function (exports) {
     
     /**
-     * The standard messages that the acequia system handles.
-     */
-    var MSG_CONNECT    = "/connect";
-    var MSG_DISCONNECT = "/disconnect";
-    var MSG_GETCLIENTS = "/getClients";
-
-    /**
      * Class to define the json messages to and from from the acequia client.
      * @param {String} from The name of the unique user who is sending this message.
      * @param {String} name The name of the message.
@@ -57,9 +50,10 @@
     };
 
     exports.AcequiaMessage = AcequiaMessage;
-    exports.MSG_CONNECT    = MSG_CONNECT;
-    exports.MSG_DISCONNECT = MSG_DISCONNECT;
-    exports.MSG_GETCLIENTS = MSG_GETCLIENTS;
     
+    // The standard messages that the acequia system handles.
+    exports.MSG_CONNECT    = "/connect";
+    exports.MSG_DISCONNECT = "/disconnect";
+    exports.MSG_GETCLIENTS = "/getClients";
 
 })(typeof(exports) === "undefined" ? this["msg"] = {} : exports);

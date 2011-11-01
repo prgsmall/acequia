@@ -8,19 +8,20 @@
         <script src='acequiaClient.js'></script>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"></script>
         <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js"></script>
+        <script src="http://localhost:9091/socket.io/socket.io.js"></script>
         <script type='text/javascript'>
         
             var onconnect = function(msg, ac) {
                 ac.getClients();
             };
             
-            var ongetClients = function(msg, ac) {
-                alert('Currently connected clients: ' + msg.body);
+            var ongetClients = function(message, ac) {
+                alert('Currently connected clients: ' + message.body);
             };
             
-            var ontest = function(msg, ac) {
+            var ontest = function(message, ac) {
                 $("<div></div>")
-                    .html(msg.name + " " + msg.from)
+                    .html(message.name + " " + message.from)
                     .appendTo("#received-messages");
             };
             
@@ -31,8 +32,8 @@
             };
             
             var ac = new AcequiaClient("ws://localhost:9091", "user" + Math.random());
-            ac.addMessageListener(AcequiaClient.CONNECT, onconnect);
-            ac.addMessageListener(AcequiaClient.GETCLIENTS, ongetClients);
+            ac.addMessageListener(msg.MSG_CONNECT, onconnect);
+            ac.addMessageListener(msg.MSG_GETCLIENTS, ongetClients);
             ac.addMessageListener('*', ontest);
             ac.addConnectionChangeHandler(onconnectionChanged);
             

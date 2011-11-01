@@ -79,7 +79,7 @@ WebSocketClient.prototype.equals = function (prot, id) {
 
 WebSocketClient.prototype.send = function (from, name, body) {
     var message = new msg.AcequiaMessage(from, name, body);
-    this.server.send(this.id, message.toString());
+    this.server.send(message.toString());
     this.update();
 };
 
@@ -125,10 +125,6 @@ OSCClient.prototype.toString = function () {
     return dumpObject(this, "OSCClient");
 };
 
-var HttpClient = function(name, server) {
-    AcequiaClient.call(this, name, TYP_HTTP, server);    
-};
-HttpClient.prototype = new AcequiaClient();
 
 /**
  * Object that holds the list of clients and performs operations on
