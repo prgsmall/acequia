@@ -11,7 +11,7 @@ var http = require("http"),
     querystring = require("querystring");
 
 var DEBUG = 1,
-    INTERNAL_IP = "",
+    INTERNAL_IP = "0.0.0.0",
     OSC_PORT = 9090,
     WS_PORT = 9091,
     TCP_PORT = 9092,
@@ -187,20 +187,10 @@ function startServers() {
 // The exported function is called to start the server.  
 // It starts a server for each individual protocol.
 function start() {
-    
-    // First, we need to get our internal IP, by parsing ifconfig:
     if (process.argv.length > 2) {
         INTERNAL_IP = process.argv[2];
-        startServers();
-    } else {
-        netIP.getIPFromSocket(function (error, ip) {
-            INTERNAL_IP = ip;
-            startServers();
-            if (error) {
-                logger.error("error:", error);
-            }
-        }, false);
     }
+    startServers();
 }
 
 start();
