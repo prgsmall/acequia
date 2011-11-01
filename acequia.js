@@ -5,8 +5,6 @@ var http = require("http"),
     url = require("url"),
     net = require("net"),
     log4js = require('log4js-node'),
-    dgram = require("dgram"),
-    osc = require("./libs/osc.js"),
     netIP = require("./libs/netIP.js"),
     ac = require("./client.js"),
     msg = require("./msg.js"),
@@ -45,55 +43,62 @@ function startServers() {
     var i, from, to, title, tt, client, portOut,
     request, clientList;
 
-    //OSC Server.
-    oscServer = dgram.createSocket("udp4");
+    // OSC Server.
+    try {
+        var dgram = require("dgram"),
+            osc   = require("./libs/osc.js");
 
-    oscServer.on("message", function (msg, rinfo) {
-        var cli, oscMsgs = osc.bufferToOsc(msg),  oscMsg, i;
+        oscServer = dgram.createSocket("udp4");
+
+        oscServer.on("message", function (msg, rinfo) {
+            var cli, oscMsgs = osc.bufferToOsc(msg),  oscMsg, i;
         
-        for (i in oscMsgs) {
-            oscMsg = oscMsgs[i];
-            logger.debug(JSON.stringify(oscMsg));
-            switch (oscMsg.address) {
-            case msg.MSG_CONNECT:
-                // TODO:  How do you send a reject message if the user already exists?
-                //the second parameter when logging in is an optional "port to send to".
-                portOut = (oscMsg.data[1] > 0) ? oscMsg.data[1] : rinfo.port;
-                client = new ac.OSCClient(oscMsg.data[0], rinfo.address, rinfo.port, portOut, oscServer);
-                clients.add(client);
-                logger.debug("Added client " + oscMsg.data[0] + 
-                      " (OSC@" + rinfo.address + ":" + rinfo.port + ", client #" + (clients.length - 1) + ")");
-                break;
+            for (i in oscMsgs) {
+                oscMsg = oscMsgs[i];
+                logger.debug(JSON.stringify(oscMsg));
+                switch (oscMsg.address) {
+                case msg.MSG_CONNECT:
+                    // TODO:  How do you send a reject message if the user already exists?
+                    //the second parameter when logging in is an optional "port to send to".
+                    portOut = (oscMsg.data[1] > 0) ? oscMsg.data[1] : rinfo.port;
+                    client = new ac.OSCClient(oscMsg.data[0], rinfo.address, rinfo.port, portOut, oscServer);
+                    clients.add(client);
+                    logger.debug("Added client " + oscMsg.data[0] + 
+                          " (OSC@" + rinfo.address + ":" + rinfo.port + ", client #" + (clients.length - 1) + ")");
+                    break;
         
-            case msg.MSG_DISCONNECT:
-                cli = clients.find(ac.TYP_OSC, rinfo.address, rinfo.por);
-                if (cli) {
-                    clients.remove(cli.name, "disconnect by user");
+                case msg.MSG_DISCONNECT:
+                    cli = clients.find(ac.TYP_OSC, rinfo.address, rinfo.por);
+                    if (cli) {
+                        clients.remove(cli.name, "disconnect by user");
+                    }
+                    break;
+        
+                default:
+                    from = ""; // clients.find(ac.TYP_OSC, rinfo.address, rinfo.port).name;
+                    to = ""; // clients.get(oscMsg.data.shift()).name;
+                    title = oscMsg.address;
+                    tt = oscMsg.typeTags.slice(1);
+                    onMessage(from, to, title, oscMsg.data, tt);
+                    break;
                 }
-                break;
-        
-            default:
-                from = ""; // clients.find(ac.TYP_OSC, rinfo.address, rinfo.port).name;
-                to = ""; // clients.get(oscMsg.data.shift()).name;
-                title = oscMsg.address;
-                tt = oscMsg.typeTags.slice(1);
-                onMessage(from, to, title, oscMsg.data, tt);
-                break;
             }
-        }
-    });
+        });
     
-    // This is the bit of code that tells plasticSarcastic what ip and port we are.  
-    // Essentially our authentication/auto-discovery method for right now.
-    oscServer.on("listening", function () {
-        logger.debug("oscServer is listening on " + oscServer.address().address + ":" + oscServer.address().port);
-    });
+        // This is the bit of code that tells plasticSarcastic what ip and port we are.  
+        // Essentially our authentication/auto-discovery method for right now.
+        oscServer.on("listening", function () {
+            logger.debug("oscServer is listening on " + oscServer.address().address + ":" + oscServer.address().port);
+        });
 
-    oscServer.on("close", function () {
-        logger.debug("oscServer closed");
-    });
+        oscServer.on("close", function () {
+            logger.debug("oscServer closed");
+        });
         
-    oscServer.bind(OSC_PORT, INTERNAL_IP);
+        oscServer.bind(OSC_PORT, INTERNAL_IP);
+    } catch (e) {
+        logger.error("Unable to create OSC server");
+    }
 
     // Websocket server:
     wsServer = require('socket.io').listen(WS_PORT);
