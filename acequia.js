@@ -5,7 +5,6 @@ var http = require("http"),
     url = require("url"),
     net = require("net"),
     log4js = require('log4js-node'),
-    netIP = require("./libs/netIP.js"),
     ac = require("./client.js"),
     msg = require("./msg.js"),
     querystring = require("querystring");
@@ -88,7 +87,7 @@ function startServers() {
         // This is the bit of code that tells plasticSarcastic what ip and port we are.  
         // Essentially our authentication/auto-discovery method for right now.
         oscServer.on("listening", function () {
-            logger.debug("oscServer is listening on " + oscServer.address().address + ":" + oscServer.address().port);
+            logger.debug("OSC Server is listening on %j", oscServer.address());
         });
 
         oscServer.on("close", function () {
@@ -114,7 +113,7 @@ function startServers() {
         'xhr-polling',
         'jsonp-polling'
     ]);
-
+    
     wsServer.sockets.on('connection', function (socket) {
         
         logger.debug(socket.id + " Connected");
@@ -176,10 +175,12 @@ function startServers() {
         });
 
     });
+    
+    tcpServer.on("listening", function() {
+        logger.debug("TCP Server is listening on %j", tcpServer.address());        
+    });
 
     tcpServer.listen(TCP_PORT, INTERNAL_IP);
-
-    logger.debug("TCP erver is listening on " + INTERNAL_IP + ":" + TCP_PORT);
 
     setInterval(kickIdle, 1000);
 }

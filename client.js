@@ -13,7 +13,6 @@ var log4js = require('log4js-node'),
 
 var TYP_OSC = "OSC",
     TYP_WS = "WEBSOCKET",
-    TYP_HTTP = "HTTP",
     TYP_TCP = "TCP";
 
 var logger = log4js.getLogger("client");
@@ -35,6 +34,8 @@ var dumpObject = function (obj, className) {
     ret += "}";
     return ret;
 };
+
+//=============================================================================
 
 /**
  * The base class for all acequia clients.
@@ -60,6 +61,8 @@ AcequiaClient.prototype.update = function () {
     this.lastMessage = (new Date()).getTime();
 };
 
+//=============================================================================
+
 /**
  * Defines the client connected to acequia via Websockets
  * @param {String} name The unique user name associated with the client.
@@ -73,8 +76,7 @@ var WebSocketClient = function (name, id, server) {
 WebSocketClient.prototype = new AcequiaClient();
 
 WebSocketClient.prototype.equals = function (prot, id) {
-    return (this.protocol === prot &&
-            this.id === id);
+    return (this.protocol === prot && this.id === id);
 };
 
 WebSocketClient.prototype.send = function (from, name, body) {
@@ -87,6 +89,35 @@ WebSocketClient.prototype.toString = function () {
     return dumpObject(this, "WebSocketClient");
 };
 
+//=============================================================================
+
+/**
+ * Defines the client connected to acequia via a direct TCP socket connection
+ * @param {String} name The unique user name associated with the client.
+ * @param {String} id The id assigned to the connection by the websocket
+ * @param {Object} server The WebSocketServer that will be used to send the message.
+ */
+var TCPClient = function (name, ip, server) {
+    this.ip = ip;
+    AcequiaClient.call(this, name, TYP_TCP, server);
+};
+TCPClient.prototype = new AcequiaClient();
+
+TCPClient.prototype.equals = function (prot, ip) {
+    return (this.protocol === prot && this.ip === ip);
+};
+
+TCPClient.prototype.send = function (from, name, body) {
+    var message = new msg.AcequiaMessage(from, name, body);
+    this.server.send(message.toString());
+    this.update();
+};
+
+TCPClient.prototype.toString = function () {
+    return dumpObject(this, "TCPClient");
+};
+
+//=============================================================================
 
 /**
  * Defines the client connected to acequia via an OSC connection
@@ -125,6 +156,7 @@ OSCClient.prototype.toString = function () {
     return dumpObject(this, "OSCClient");
 };
 
+//=============================================================================
 
 /**
  * Object that holds the list of clients and performs operations on
@@ -211,7 +243,7 @@ AcequiaClients.prototype.add = function (client) {
  */
 AcequiaClients.prototype.remove = function (name, reason) {
     if (name in this.clients) {
-        logger.debug("Dropped client " + name + " from server.  Reason:" + reason);
+        logger.debug("Dropped client " + name + " from server.  Reason: " + reason);
         delete this.clients[name];
     } else {
         logger.warn("Attempted to remove a client that does not exist.");
@@ -237,8 +269,9 @@ AcequiaClients.prototype.clearExpired = function () {
 
 // Export the entities that Acequia needs
 exports.TYP_OSC = TYP_OSC;
+exports.TYP_TCP = TYP_TCP;
 exports.TYP_WS = TYP_WS;
-exports.TYP_HTTP = TYP_HTTP;
 exports.WebSocketClient = WebSocketClient;
 exports.OSCClient = OSCClient;
+exports.TCPClient = TCPClient;
 exports.AcequiaClients = AcequiaClients;
