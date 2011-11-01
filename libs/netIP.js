@@ -59,8 +59,9 @@ var getNetworkIP = function (callback, bypassCache) {
             callback(error, null);
         });
     } catch (e) {
-        return getIPFromSocket(callback);
+        getIPFromSocket(callback);
     }
 };
 
 exports.getNetworkIP = getNetworkIP;
+exports.getIPFromSocket = getIPFromSocket;

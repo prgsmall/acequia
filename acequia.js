@@ -193,7 +193,7 @@ function start() {
         INTERNAL_IP = process.argv[2];
         startServers();
     } else {
-        netIP.getNetworkIP(function (error, ip) {
+        netIP.getIPFromSocket(function (error, ip) {
             INTERNAL_IP = ip;
             startServers();
             if (error) {
