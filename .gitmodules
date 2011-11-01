@@ -1,9 +1,3 @@
-[submodule "vendor/websocket-server"]
-	path = vendor/websocket-server
-	url = git://github.com/miksago/node-websocket-server.git
-[submodule "vendor/node-jspack"]
-	path = vendor/node-jspack
-	url = https://github.com/pgriess/node-jspack
 [submodule "vendor/log4js-node"]
 	path = vendor/log4js-node
 	url = https://github.com/csausdev/log4js-node.git
