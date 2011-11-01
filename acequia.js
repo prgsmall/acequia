@@ -4,7 +4,7 @@
 var http = require("http"),
     url = require("url"),
     net = require("net"),
-    log4js = require('./vendor/log4js-node'),
+    log4js = require('log4js-node'),
     dgram = require("dgram"),
     osc = require("./libs/osc.js"),
     netIP = require("./libs/netIP.js"),

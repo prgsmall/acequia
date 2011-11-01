@@ -7,7 +7,7 @@
 
 /*global exports require  */
 
-var log4js = require('./vendor/log4js-node'),
+var log4js = require('log4js-node'),
     msg = require("./msg.js"),
     osc = require("./libs/osc.js");
 

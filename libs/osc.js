@@ -1,6 +1,6 @@
 /*globals require exports */
 var Buffer = require('buffer').Buffer;
-var log4js = require('../vendor/log4js-node');
+var log4js = require('log4js-node');
 
 var logger = log4js.getLogger("osc");
 
