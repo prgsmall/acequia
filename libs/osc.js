@@ -1,5 +1,4 @@
 /*globals require exports */
-var jspack = require('../vendor/node-jspack/jspack').jspack;
 var Buffer = require('buffer').Buffer;
 var log4js = require('../vendor/log4js-node');
 
@@ -8,7 +7,11 @@ var logger = log4js.getLogger("osc");
 var Osc = function (addr, tt, d) {
     this.address = addr;
     this.typeTags = tt;
+    if (typeof d === "undefined") {
+        d = [];
+    }
     this.data = d;
+
     return this;
 };
 exports.newOsc = Osc;
@@ -51,15 +54,20 @@ var parseMessage = function (buffer) {
         i += 1;
     }
     i += 1;
-    
+
     for (j = 0; j < typeTags.length; j += 1) {
-        if (typeTags.charAt(j) === 'i') {
+        switch (typeTags.charAt(j)) {
+        case "i":
             data.push(buffer.readInt32BE(i)); 
             i += 4;
-        } else if (typeTags.charAt(j) === 'f') {
+            break;
+
+        case "f":
             data.push(buffer.readFloatBE(i)); 
             i += 4;
-        } else if (typeTags.charAt(j) === 's') {
+            break;
+
+        case "s":
             str = '';
             while (buffer[i]) {
                 str += String.fromCharCode(buffer[i]);
@@ -69,6 +77,32 @@ var parseMessage = function (buffer) {
             while ((i % 4) !== 0) {
                 i += 1;
             }
+            break;
+
+        case "b":
+            // TODO:  OSC-blob
+            break;
+
+        default:
+            break;
+        /*
+        TODO:
+        OSC Type Tags that must be used for certain nonstandard argument types
+        OSC Type Tag	Type of corresponding argument
+        h	64 bit big-endian two's complement integer
+        t	OSC-timetag
+        d	64 bit ("double") IEEE 754 floating point number
+        S	Alternate type represented as an OSC-string (for example, for systems that differentiate "symbols" from "strings")
+        c	an ascii character, sent as 32 bits
+        r	32 bit RGBA color
+        m	4 byte MIDI message. Bytes from MSB to LSB are: port id, status byte, data1, data2
+        T	True. No bytes are allocated in the argument data.
+        F	False. No bytes are allocated in the argument data.
+        N	Nil. No bytes are allocated in the argument data.
+        I	Infinitum. No bytes are allocated in the argument data.
+        [	Indicates the beginning of an array. The tags following are for data in the Array until a close brace tag is reached.
+        ]	Indicates the end of an array.
+        */
         }
     }
     
@@ -80,7 +114,7 @@ var parseMessage = function (buffer) {
  * @param {Buffer} buffer The buffer of data to parse
  * @returns {Array} An array of OSC messages
  */
-var parseBundle = function(buffer) {
+var parseBundle = function (buffer) {
     var i = 0, j, size, packet, ret = [], msgs = [];
 
     // Skip the name ("#bundle\0") and time tag (8 bytes)
@@ -115,7 +149,7 @@ var parseBundle = function(buffer) {
 var parsePacket = function (buffer) {
     // Determine if this is a bundle or a message
     if (String.fromCharCode(buffer[0]) === "#") {
-        return parseBundle(buffer)
+        return parseBundle(buffer);
     } else {
         return parseMessage(buffer);
     }
@@ -131,141 +165,92 @@ exports.bufferToOsc = function (slowBuffer) {
     return parsePacket(new Buffer(slowBuffer));
 };
 
-exports.bufferToOscBundle = function (buffer) {
-    var i, j, k, tt, data, str, addr, size,
-    addresses = [],
-    typeTags = [],
-    datas = [];
-        
-    buffer = buffer.slice(16, buffer.length);
-    
-    i = 0;
-    j = 0;
-    while (true) {
-        size = jspack.Unpack('i', buffer, j);
-        j += 4;
-        addr = '';
-        while (buffer[j]) {
-            addr += String.fromCharCode(buffer[j]);
-            j += 1;
-        }
-        addresses.push(addr);
-        while ((j % 4) < 3) { 
-            j += 1;
-        }
-        j += 1;
-        
-        tt = '';
-        while (buffer[j])
-        {
-            if (buffer[j] === 'f'.charCodeAt(0) || 
-                buffer[j] === 'i'.charCodeAt(0) || 
-                buffer[j] === 's'.charCodeAt(0)) {
-                tt += String.fromCharCode(buffer[j]);
-            }
-            j += 1;
-        }
-        typeTags.push(tt);
-        while ((j % 4) < 3) {
-            j += 1;
-        }
-        j += 1;
-        
-        data = [];
-        for (k = 0; k < tt.length; k += 1) {
-            if (tt.charAt(k) === 'i') {
-                data.push(jspack.Unpack('i', buffer, j)[0]); 
-                j += 4;
-            } else if (tt.charAt(k) === 'f') {
-                data.push(jspack.Unpack('f', buffer, j)[0]); 
-                j += 4;
-            } else if (tt.charAt(k) === 's') {
-                str = '';
-                while (buffer[j]) {
-                    str += String.fromCharCode(buffer[j]); 
-                    j += 1;
-                }
-                data.push(str);
-                while ((j % 4) !== 0) {
-                    j += 1;
-                }
-            }
-        }
-        datas.push(data);
-        
-        if (j + 16 >= buffer.length) {
-            break;
-        }
-        i += 1;
+var toOSCString = function (instr) {
+    var str = instr + '\0';
+    while ((str.length % 4) !== 0) {
+        str += '\0';
     }
-    return new OscBundle(addresses, typeTags, datas);
+    return str;
+};
+
+var writeOSCString = function (instr, buffer, offset) {
+    var str = toOSCString(instr);
+    buffer.write(str, offset);
+    return str.length;
+};
+
+var writeOSCInt = function (value, buffer, offset) {
+    buffer.writeInt32BE(value, offset);
+    return 4;
+};
+
+var writeOSCFloat = function (value, buffer, offset) {
+    buffer.writeFloatBE(value, offset);
+    return 4;
 };
 
 exports.oscToBuffer = function (osc) {
-    var byteArr, buffer, str, offset, i, j;
-    
-    if (typeof osc.data === "undefined") {
-        osc.data = [];
-    }
+    var buffer, offset = 0, i, j;
     
     // This could be more efficient:
     buffer = new Buffer(osc.address.length + osc.typeTags.length + (osc.data.length * 4) + 80);
-    str = osc.address + '\0';
-    while ((str.length % 4) !== 0) {
-        str += '\0';
-    }
-    buffer.write(str);
-    offset = str.length;
     
-    str = ',' + osc.typeTags + '\0';
-    while ((str.length % 4) !== 0) {
-        str += '\0';
-    }
-    buffer.write(str, offset);
-    offset += str.length;
-    
-    /*osc.typeTags=osc.typeTags.replace(/find/s,'c');
-    var byteArr=jspack.Pack(osc.typeTags,osc.data);
-    console.log(byteArr);
-    for (var i=0; i<byteArr.length; i++) {
-        buffer[offset+i]=byteArr[i];
-    }*/
+    offset += writeOSCString(osc.address, buffer, offset);    
+    offset += writeOSCString(',' + osc.typeTags, buffer, offset);
     
     for (i = 0; i < osc.data.length; i += 1) {
-        if (osc.typeTags.charAt(i) === 'i' || osc.typeTags.charAt(i) === 'f') {
-            byteArr = jspack.Pack(osc.typeTags.charAt(i), [osc.data[i]]);
-            for (j = 0; j < byteArr.length; j += 1) {
-                buffer[offset] = byteArr[j];
-                offset += 1;
-            }
-        } else { //string
-            for (j = 0; j < osc.data[i].length; j += 1) {
-                buffer[offset] = osc.data[i].charCodeAt(j);
-                offset += 1;
-            }
-            buffer[offset] += '\0';
-            offset += 1;
-            while ((offset % 4) !== 0) {
-                buffer[offset] += '\0'; 
-                offset += 1;
-            }
+        switch (osc.typeTags.charAt(i)) {
+        case "i":
+            offset += writeOSCInt(osc.data[i], buffer, offset);
+            break;
+
+        case "f":
+            offset += writeOSCFloat(osc.data[i], buffer, offset);
+            break;
+
+        case "s":
+            offset += writeOSCString(osc.data[i], buffer, offset);        
+            break;
+        
+        case "b":
+            // TODO:  OSC-blob
+            break;
+
+        default:
+            break;
+        /*
+        TODO:
+        OSC Type Tags that must be used for certain nonstandard argument types
+        OSC Type Tag	Type of corresponding argument
+        h	64 bit big-endian two's complement integer
+        t	OSC-timetag
+        d	64 bit ("double") IEEE 754 floating point number
+        S	Alternate type represented as an OSC-string (for example, for systems that differentiate "symbols" from "strings")
+        c	an ascii character, sent as 32 bits
+        r	32 bit RGBA color
+        m	4 byte MIDI message. Bytes from MSB to LSB are: port id, status byte, data1, data2
+        T	True. No bytes are allocated in the argument data.
+        F	False. No bytes are allocated in the argument data.
+        N	Nil. No bytes are allocated in the argument data.
+        I	Infinitum. No bytes are allocated in the argument data.
+        [	Indicates the beginning of an array. The tags following are for data in the Array until a close brace tag is reached.
+        ]	Indicates the end of an array.
+        */
         }
     }
     return buffer.slice(0, offset);
 };
 
 exports.oscBundleToBuffer = function (bundle) { 
-    var i, j, k, size, byteArr,
-    buffer = new Buffer(1000),
-    str = '#bundle\0',
-    offset = str.length;
-    buffer.write(str);
+    var i, j, k, size, offset = 0,
+    buffer = new Buffer(1000);
     
-    str = '0000001\0';
-    buffer.write(str, offset);
-    offset += str.length;
+    offset += writeOSCString("#bundle", buffer, offset);
+    offset += writeOSCString("0000001", buffer, offset);
     
     for (i = 0; i < bundle.addresses.length; i += 1) {
+        
+        // Calculate the size of the message
         size = bundle.addresses[i].length;
         while ((size % 4) !== 0) {
             size += 1;
@@ -287,44 +272,23 @@ exports.oscBundleToBuffer = function (bundle) {
             }
         }
         
-        byteArr = jspack.Pack('i', [size]);
-        for (j = 0; j < byteArr.length; j += 1) {
-            buffer[offset] = byteArr[j];
-            offset += 1;
-        }
-        
-        str = bundle.addresses[i] + '\0';
-        while ((str.length % 4) !== 0) {
-            str += '\0';
-        }
-        buffer.write(str, offset);
-        offset += str.length;
-        
-        str = ',' + bundle.typeTags[i] + '\0';
-        while ((str.length % 4) !== 0) {
-            str += '\0';
-        }
-        buffer.write(str, offset);
-        offset += str.length;
+        offset += writeOSCInt(size, buffer, offset);
+        offset += writeOSCString(bundle.addresses[i], buffer, offset);
+        offset += writeOSCString(',' + bundle.typeTags[i], buffer, offset);
         
         for (j = 0; j < bundle.datas[i].length; j += 1) {
-            if (bundle.typeTags[i].charAt(j) === 'i' || bundle.typeTags[i].charAt(j) === 'f') {
-                byteArr = jspack.Pack(bundle.typeTags[i].charAt(j), [bundle.datas[i][j]]);
-                for (k = 0; k < byteArr.length; k += 1) {
-                    buffer[offset] = byteArr[k];
-                    offset += 1;
-                }
-            } else { //string
-                for (k = 0; k < bundle.datas[i][j].length; k += 1) {
-                    buffer[offset] = bundle.datas[i][j].charCodeAt(k);
-                    offset += 1;
-                }
-                buffer[offset] += '\0';
-                offset += 1;
-                while ((offset % 4) !== 0) {
-                    buffer[offset] += '\0'; 
-                    offset += 1;
-                }
+            switch (bundle.typeTags[i].charAt(j)) {
+            case "i":
+                offset += writeOSCInt(bundle.datas[i][j], buffer, offset);
+                break;
+                
+            case "f":             
+                offset += writeOSCFloat(bundle.datas[i][j], buffer, offset);
+                break;
+                
+            case "s":
+                offset += writeOSCString(bundle.datas[i][j], buffer, offset);
+                break;
             }
         }
     }
