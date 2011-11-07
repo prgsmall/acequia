@@ -8,7 +8,7 @@
         <script src='acequiaClient.js'></script>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"></script>
         <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js"></script>
-        <script src="http://localhost:9091/socket.io/socket.io.js"></script>
+
         <script type='text/javascript'>
         
             var onconnect = function(msg, ac) {
@@ -31,7 +31,7 @@
                 $("#send").button("option", "disabled", !connected);
             };
             
-            var ac = new AcequiaClient("ws://localhost:9091", "user" + Math.random());
+            var ac = new AcequiaClient("http://localhost:9091", "user" + Math.random());
             ac.addMessageListener(msg.MSG_CONNECT, onconnect);
             ac.addMessageListener(msg.MSG_GETCLIENTS, ongetClients);
             ac.addMessageListener('*', ontest);

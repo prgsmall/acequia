@@ -97,19 +97,22 @@ WebSocketClient.prototype.toString = function () {
  * @param {String} id The id assigned to the connection by the websocket
  * @param {Object} server The WebSocketServer that will be used to send the message.
  */
-var TCPClient = function (name, ip, server) {
+var TCPClient = function (name, ip, port, server) {
     this.ip = ip;
+    this.port = port;
     AcequiaClient.call(this, name, TYP_TCP, server);
 };
 TCPClient.prototype = new AcequiaClient();
 
-TCPClient.prototype.equals = function (prot, ip) {
-    return (this.protocol === prot && this.ip === ip);
+TCPClient.prototype.equals = function (prot, ip, port) {
+    return (this.protocol === prot && 
+            this.ip === ip &&
+            this.port === port);
 };
 
 TCPClient.prototype.send = function (from, name, body) {
     var message = new msg.AcequiaMessage(from, name, body);
-    this.server.send(message.toString());
+    this.server.write(message.toString());
     this.update();
 };
 

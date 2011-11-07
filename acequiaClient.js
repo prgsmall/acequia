@@ -1,4 +1,4 @@
-/*global WebSocket console AcequiaMessage ServerSocket io msg*/
+/*global document console io msg*/
 
 /**
  * Creates an event callback by wrapping the object with a closure.
@@ -42,8 +42,16 @@ var AcequiaClient = function (uri, userName) {
     this.userName = userName;
     this.socket = null;
     
-    this.listeners = {};    
+    this.listeners = {};
 };
+
+AcequiaClient.prototype.getSocketIOJS = function (onload) {
+    var fileref = document.createElement('script');
+    fileref.setAttribute("type","text/javascript");
+    fileref.setAttribute("src", this.uri + "/socket.io/socket.io.js");
+    fileref.onload = onload;
+    document.body.appendChild(fileref)
+}
 
 /**
  * Adds a listener for the message with the message name.
@@ -74,9 +82,15 @@ AcequiaClient.prototype.removeMessageListener = function (msgName, callback) {
  * Connects to the Acequia server by creating a new web socket connection;
  */
 AcequiaClient.prototype.connect = function () {
+    var onload = function(that) {
+        return function (evt) {
+            that.socket = io.connect(that.uri);
+            that.socket.on("connect", objCallback(that, "onConnect"));
+        };
+    };
+    
     if (!this.socket || (!this.socket.socket.connected && !this.socket.socket.connecting)) {
-        this.socket = io.connect(this.uri);
-        this.socket.on("connect", objCallback(this, "onConnect"));
+        this.getSocketIOJS(onload(this));
     }
 };
 

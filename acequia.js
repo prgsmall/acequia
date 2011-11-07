@@ -5,6 +5,8 @@ var http = require("http"),
     url = require("url"),
     net = require("net"),
     log4js = require('log4js-node'),
+    dgram = require("dgram"),
+    osc = require("./libs/osc.js"),
     ac = require("./client.js"),
     msg = require("./msg.js"),
     querystring = require("querystring");
@@ -39,70 +41,61 @@ function kickIdle() {
 
 // Once we actually get our internal IP, we start the servers.
 function startServers() {
-    var i, from, to, title, tt, client, portOut,
-    request, clientList;
+    var i, from, to, title, tt, client, portOut, clientList;
 
-    // OSC Server.
-    try {
-        var dgram = require("dgram"),
-            osc   = require("./libs/osc.js");
+    oscServer = dgram.createSocket("udp4");
 
-        oscServer = dgram.createSocket("udp4");
-
-        oscServer.on("message", function (msg, rinfo) {
-            var cli, oscMsgs = osc.bufferToOsc(msg),  oscMsg, i;
-        
-            for (i in oscMsgs) {
-                oscMsg = oscMsgs[i];
-                logger.debug(JSON.stringify(oscMsg));
-                switch (oscMsg.address) {
-                case msg.MSG_CONNECT:
-                    // TODO:  How do you send a reject message if the user already exists?
-                    //the second parameter when logging in is an optional "port to send to".
-                    portOut = (oscMsg.data[1] > 0) ? oscMsg.data[1] : rinfo.port;
-                    client = new ac.OSCClient(oscMsg.data[0], rinfo.address, rinfo.port, portOut, oscServer);
-                    clients.add(client);
-                    logger.debug("Added client " + oscMsg.data[0] + 
-                          " (OSC@" + rinfo.address + ":" + rinfo.port + ", client #" + (clients.length - 1) + ")");
-                    break;
-        
-                case msg.MSG_DISCONNECT:
-                    cli = clients.find(ac.TYP_OSC, rinfo.address, rinfo.por);
-                    if (cli) {
-                        clients.remove(cli.name, "disconnect by user");
-                    }
-                    break;
-        
-                default:
-                    from = ""; // clients.find(ac.TYP_OSC, rinfo.address, rinfo.port).name;
-                    to = ""; // clients.get(oscMsg.data.shift()).name;
-                    title = oscMsg.address;
-                    tt = oscMsg.typeTags.slice(1);
-                    onMessage(from, to, title, oscMsg.data, tt);
-                    break;
-                }
-            }
-        });
+    oscServer.on("message", function (msg, rinfo) {
+        var cli, oscMsgs = osc.bufferToOsc(msg),  oscMsg, i;
     
-        // This is the bit of code that tells plasticSarcastic what ip and port we are.  
-        // Essentially our authentication/auto-discovery method for right now.
-        oscServer.on("listening", function () {
-            logger.debug("OSC Server is listening on %j", oscServer.address());
-        });
+        for (i in oscMsgs) {
+            oscMsg = oscMsgs[i];
+            logger.debug(JSON.stringify(oscMsg));
+            switch (oscMsg.address) {
+            case msg.MSG_CONNECT:
+                // TODO:  How do you send a reject message if the user already exists?
+                //the second parameter when logging in is an optional "port to send to".
+                portOut = (oscMsg.data[1] > 0) ? oscMsg.data[1] : rinfo.port;
+                client = new ac.OSCClient(oscMsg.data[0], rinfo.address, rinfo.port, portOut, oscServer);
+                clients.add(client);
+                logger.debug("Added client " + oscMsg.data[0] + 
+                      " (OSC@" + rinfo.address + ":" + rinfo.port + ", client #" + (clients.length - 1) + ")");
+                break;
+    
+            case msg.MSG_DISCONNECT:
+                cli = clients.find(ac.TYP_OSC, rinfo.address, rinfo.por);
+                if (cli) {
+                    clients.remove(cli.name, "disconnect by user");
+                }
+                break;
+    
+            default:
+                from = ""; // clients.find(ac.TYP_OSC, rinfo.address, rinfo.port).name;
+                to = ""; // clients.get(oscMsg.data.shift()).name;
+                title = oscMsg.address;
+                tt = oscMsg.typeTags.slice(1);
+                onMessage(from, to, title, oscMsg.data, tt);
+                break;
+            }
+        }
+    });
 
-        oscServer.on("close", function () {
-            logger.debug("oscServer closed");
-        });
-        
-        oscServer.bind(OSC_PORT, INTERNAL_IP);
-    } catch (e) {
-        logger.error("Unable to create OSC server");
-    }
+    // This is the bit of code that tells plasticSarcastic what ip and port we are.  
+    // Essentially our authentication/auto-discovery method for right now.
+    oscServer.on("listening", function () {
+        logger.debug("OSC Server is listening on %j", oscServer.address());
+    });
+
+    oscServer.on("close", function () {
+        logger.debug("oscServer closed");
+    });
+    
+    oscServer.bind(OSC_PORT, INTERNAL_IP);
 
     // Websocket server:
     wsServer = require('socket.io').listen(WS_PORT);
 
-//    wsServer.enable('browser client minification');  // send minified client
+    wsServer.enable('browser client minification');  // send minified client
     wsServer.enable('browser client etag');          // apply etag caching logic based on version number
     wsServer.enable('browser client gzip');          // gzip the file
     wsServer.set('log level', 1);                    // reduce logging
@@ -118,7 +111,7 @@ function startServers() {
         
         logger.debug(socket.id + " Connected");
         socket.on('message', function (data) {
-            logger.debug(this.id + " Received message: " + data);
+            logger.debug("WebSocket" + this.id + " Received message: " + data);
             
             var message = JSON.parse(data);
 
@@ -167,11 +160,52 @@ function startServers() {
     tcpServer = net.createServer(function (socket) {
 
         socket.addListener("connect", function () {
-            logger.debug("Connection from " + socket.remoteAddress);
+            logger.debug("TCP:  Connection from %s:%s", socket.remoteAddress, socket.remotePort);
         });
         
         socket.addListener("data", function(data) {
+            logger.debug("TCP:  Received message: " + data);
             
+            var message = JSON.parse(data);
+
+            switch (message.name) {
+            case msg.MSG_CONNECT:
+                client = new ac.TCPClient(message.from, socket.remoteAddress, socket.remotePort, socket);
+                try {
+                    clients.add(client);
+                } catch (e) {
+                    var m = new msg.AcequiaMessage("SYS", msg.MSG_CONNECT, -1);
+                    socket.write(m.toString());
+                }
+                client.send("SYS", msg.MSG_CONNECT, 1);
+                break;
+
+            case msg.MSG_DISCONNECT:
+                clients.get(message.from).send("SYS", msg.MSG_DISCONNECT, 1);
+                clients.remove(message.from, "disconnect by user.");
+                break;
+        
+            case msg.MSG_GETCLIENTS:
+                var clientList = [], cli;
+                for (cli in clients.clients) {
+                    clientList.push(clients.clients[cli].name);
+                }
+                clients.get(message.from).send("SYS", msg.MSG_GETCLIENTS, clientList);
+                break;
+
+            default:
+                onMessage(message.from, message.to, message.name, message.body);
+                break;
+            }
+        });
+
+        socket.on("disconnect", function () {
+            logger.debug(this.remoteAddress + " Disconnected");
+            
+            var cli = clients.find(ac.TYP_TCP, socket.remoteAddress, socket.remotePort);
+            if (cli) {
+                clients.remove(cli.name, "connection closed");
+            }
         });
 
     });
