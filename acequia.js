@@ -148,20 +148,15 @@ function startServers() {
         });
 
         socket.on("disconnect", function () {
-            logger.debug(this.id + " Disconnected");
-            
-            var cli = clients.find(ac.TYP_WS, this.id);
-            if (cli) {
-                clients.remove(cli.name, "connection closed");
-            }
+            clients.findAndRemove(ac.TYP_WS, this.id, "connection closed");
         });
     });
 
     // Setup a tcp server
     tcpServer = net.createServer(function (socket) {
-
+        
         socket.addListener("connect", function () {
-            logger.debug("TCP:  Connection from %s:%s", socket.remoteAddress, socket.remotePort);
+            logger.debug("TCP: %s:%s connect", socket.remoteAddress, socket.remotePort);
         });
         
         socket.addListener("data", function(data) {
@@ -178,7 +173,7 @@ function startServers() {
             
             for (index in msgs) {
                 message = msgs[index];
-                logger.debug("TCP:  Received message: %j", message);
+                logger.debug("TCP: %s:%s data : %j", socket.remoteAddress, socket.remotePort, message);
 
                 switch (message.name) {
                 case msg.MSG_CONNECT:
@@ -188,13 +183,15 @@ function startServers() {
                     } catch (e) {
                         var m = new msg.AcequiaMessage("SYS", msg.MSG_CONNECT, -1);
                         socket.write(m.toString());
+                        socket.end();
                     }
                     client.send("SYS", msg.MSG_CONNECT, 1);
                     break;
 
                 case msg.MSG_DISCONNECT:
                     clients.get(message.from).send("SYS", msg.MSG_DISCONNECT, 1);
-                    clients.remove(message.from, "disconnect by user.");
+                    clients.remove(message.from, "client sent disconnect message");
+                    socket.end();
                     break;
         
                 case msg.MSG_GETCLIENTS:
@@ -212,15 +209,20 @@ function startServers() {
             }
         });
 
-        socket.on("disconnect", function () {
-            logger.debug(this.remoteAddress + " Disconnected");
-            
-            var cli = clients.find(ac.TYP_TCP, socket.remoteAddress, socket.remotePort);
-            if (cli) {
-                clients.remove(cli.name, "connection closed");
-            }
+        socket.on("end", function () {
+            logger.debug("TCP: %s:%s end", socket.remoteAddress, socket.remotePort);
+            clients.findAndRemove(ac.TYP_TCP, socket.remoteAddress, socket.remotePort, "socket.on.end");
         });
 
+        socket.on("close", function (had_error) {
+            logger.debug("TCP: %s:%s close", socket.remoteAddress, socket.remotePort);
+            clients.findAndRemove(ac.TYP_TCP, socket.remoteAddress, socket.remotePort, "socket.on.close");
+        });
+
+        socket.on("error", function (exception) {
+            logger.debug("TCP: %s:%s error %s", socket.remoteAddress, socket.remotePort, exception);
+            socket.destroy();
+        });
     });
     
     tcpServer.on("listening", function() {

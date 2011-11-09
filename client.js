@@ -254,6 +254,21 @@ AcequiaClients.prototype.remove = function (name, reason) {
 };
 
 /**
+ * Finds a client, given the semantics of the find method, and removes it from
+ * the client list.
+ * @param a client-dependent list of arguments to pass into the find method.  The
+ * last argument being the reason the client is being removed.
+ */
+AcequiaClients.prototype.findAndRemove = function () {
+    var reason = arguments[arguments.length - 1],
+    client = this.find.apply(this, arguments);
+    
+    if (client) {
+        this.remove(client.name, reason);
+    }
+};
+
+/**
  * Removes all clients which have not been heard from within the keep alive interval.
  */
 AcequiaClients.prototype.clearExpired = function () {

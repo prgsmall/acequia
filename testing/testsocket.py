@@ -1,4 +1,4 @@
-from threading import Thread
+from threading import Thread, Timer
 import socket
 import simplejson
 import struct
@@ -16,11 +16,17 @@ class AcequiaMessageThread(Thread):
 
     def __init__(self):
         Thread.__init__(self)
-        
+        self.stopped = False
     def sendMessage(self, msg):
         msg = simplejson.dumps(msg)
         slen = struct.pack(">L", len(msg)) 
         self.sock.send(slen + msg)
+        
+    def stopIt(self):
+        print "stopIt"
+        self.sock.shutdown(socket.SHUT_RDWR)
+        self.sock.close()
+        self.stopped = True
 
     def run(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -30,7 +36,8 @@ class AcequiaMessageThread(Thread):
             sock.connect(("localhost", 9092))
             self.sock = sock
             self.sendMessage(newAcequiaMessage(connectionMessage, []))
-            
+            # Timer(10.0, self.stopIt).start()
+                        
         except socket.error, e:
             print "Error connecting %s" % e
 
@@ -47,15 +54,14 @@ class AcequiaMessageThread(Thread):
                     
                     if message["name"] == connectionMessage:
                         self.sendMessage(newAcequiaMessage("/getClients", []))
-                    
-                    self.sendMessage(newAcequiaMessage("ATESTMESSAGE", ["BLAHHHH"]))
+                    elif message["name"] == "/getClients":
+                        self.sendMessage(newAcequiaMessage("/disconnect", []));
 
-                        
             except socket.error, e:
                 print e
-                break
+                self.stopped = True
 
-        self.stopped = True
+        self.sock.close()
 
 if __name__ == "__main__":
     acequiaMessageThread = AcequiaMessageThread()
