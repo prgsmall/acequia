@@ -1,6 +1,7 @@
 from threading import Thread
 import socket
 import simplejson
+import struct
 
 fromname = "argggghhh"
 connectionMessage = "/connect"
@@ -15,6 +16,11 @@ class AcequiaMessageThread(Thread):
 
     def __init__(self):
         Thread.__init__(self)
+        
+    def sendMessage(self, msg):
+        msg = simplejson.dumps(msg)
+        slen = struct.pack(">L", len(msg)) 
+        self.sock.send(slen + msg)
 
     def run(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -23,8 +29,7 @@ class AcequiaMessageThread(Thread):
         try :
             sock.connect(("localhost", 9092))
             self.sock = sock
-            msg = newAcequiaMessage(connectionMessage, [])
-            self.sock.send(simplejson.dumps(msg))
+            self.sendMessage(newAcequiaMessage(connectionMessage, []))
             
         except socket.error, e:
             print "Error connecting %s" % e
@@ -41,8 +46,9 @@ class AcequiaMessageThread(Thread):
                     message = simplejson.loads(data)
                     
                     if message["name"] == connectionMessage:
-                        msg = newAcequiaMessage("/getClients", [])
-                        self.sock.send(simplejson.dumps(msg))
+                        self.sendMessage(newAcequiaMessage("/getClients", []))
+                    
+                    self.sendMessage(newAcequiaMessage("ATESTMESSAGE", ["BLAHHHH"]))
 
                         
             except socket.error, e:

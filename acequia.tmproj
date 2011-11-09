@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>currentDocument</key>
-	<string>testing/testsocket.py</string>
+	<string>client.js</string>
 	<key>documents</key>
 	<array>
 		<dict>
@@ -47,21 +47,7 @@
 			<key>firstVisibleColumn</key>
 			<integer>0</integer>
 			<key>firstVisibleLine</key>
-			<integer>154</integer>
-		</dict>
-		<key>acequiaClient.html</key>
-		<dict>
-			<key>caret</key>
-			<dict>
-				<key>column</key>
-				<integer>44</integer>
-				<key>line</key>
-				<integer>33</integer>
-			</dict>
-			<key>firstVisibleColumn</key>
-			<integer>0</integer>
-			<key>firstVisibleLine</key>
-			<integer>7</integer>
+			<integer>165</integer>
 		</dict>
 		<key>acequiaClient.js</key>
 		<dict>
@@ -89,7 +75,7 @@
 			<key>firstVisibleColumn</key>
 			<integer>0</integer>
 			<key>firstVisibleLine</key>
-			<integer>75</integer>
+			<integer>236</integer>
 		</dict>
 		<key>libs/osc.js</key>
 		<dict>
@@ -110,9 +96,9 @@
 			<key>caret</key>
 			<dict>
 				<key>column</key>
-				<integer>7</integer>
+				<integer>65</integer>
 				<key>line</key>
-				<integer>33</integer>
+				<integer>5</integer>
 			</dict>
 			<key>firstVisibleColumn</key>
 			<integer>0</integer>
@@ -147,36 +133,16 @@
 			<key>firstVisibleLine</key>
 			<integer>0</integer>
 		</dict>
-		<key>testing/testsocket.py</key>
-		<dict>
-			<key>caret</key>
-			<dict>
-				<key>column</key>
-				<integer>66</integer>
-				<key>line</key>
-				<integer>20</integer>
-			</dict>
-			<key>firstVisibleColumn</key>
-			<integer>0</integer>
-			<key>firstVisibleLine</key>
-			<integer>12</integer>
-		</dict>
 	</dict>
 	<key>openDocuments</key>
 	<array>
 		<string>client.js</string>
 		<string>acequia.js</string>
-		<string>testing/testsocket.py</string>
-		<string>acequiaClient.js</string>
-		<string>README</string>
-		<string>testing/server.js</string>
-		<string>libs/osc.js</string>
-		<string>acequiaClient.html</string>
 		<string>msg.js</string>
 	</array>
 	<key>showFileHierarchyDrawer</key>
 	<true/>
 	<key>windowFrame</key>
-	<string>{{305, 70}, {1223, 958}}</string>
+	<string>{{1937, 87}, {1223, 958}}</string>
 </dict>
 </plist>

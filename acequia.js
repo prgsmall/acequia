@@ -9,7 +9,8 @@ var http = require("http"),
     osc = require("./libs/osc.js"),
     ac = require("./client.js"),
     msg = require("./msg.js"),
-    querystring = require("querystring");
+    querystring = require("querystring"),
+    Buffer = require('buffer').Buffer;
 
 var DEBUG = 1,
     INTERNAL_IP = "0.0.0.0",
@@ -164,38 +165,50 @@ function startServers() {
         });
         
         socket.addListener("data", function(data) {
-            logger.debug("TCP:  Received message: " + data);
+            var index = 0, msgs = [], size, message,
+            buffer = new Buffer(data);
             
-            var message = JSON.parse(data);
+            while (index < buffer.length) {
+                size = buffer.readInt32BE(index);
+                index += 4;
+                message = buffer.slice(index, index + size);
+                msgs.push(JSON.parse(message));
+                index += size;
+            }
+            
+            for (index in msgs) {
+                message = msgs[index];
+                logger.debug("TCP:  Received message: %j", message);
 
-            switch (message.name) {
-            case msg.MSG_CONNECT:
-                client = new ac.TCPClient(message.from, socket.remoteAddress, socket.remotePort, socket);
-                try {
-                    clients.add(client);
-                } catch (e) {
-                    var m = new msg.AcequiaMessage("SYS", msg.MSG_CONNECT, -1);
-                    socket.write(m.toString());
-                }
-                client.send("SYS", msg.MSG_CONNECT, 1);
-                break;
+                switch (message.name) {
+                case msg.MSG_CONNECT:
+                    client = new ac.TCPClient(message.from, socket.remoteAddress, socket.remotePort, socket);
+                    try {
+                        clients.add(client);
+                    } catch (e) {
+                        var m = new msg.AcequiaMessage("SYS", msg.MSG_CONNECT, -1);
+                        socket.write(m.toString());
+                    }
+                    client.send("SYS", msg.MSG_CONNECT, 1);
+                    break;
 
-            case msg.MSG_DISCONNECT:
-                clients.get(message.from).send("SYS", msg.MSG_DISCONNECT, 1);
-                clients.remove(message.from, "disconnect by user.");
-                break;
+                case msg.MSG_DISCONNECT:
+                    clients.get(message.from).send("SYS", msg.MSG_DISCONNECT, 1);
+                    clients.remove(message.from, "disconnect by user.");
+                    break;
         
-            case msg.MSG_GETCLIENTS:
-                var clientList = [], cli;
-                for (cli in clients.clients) {
-                    clientList.push(clients.clients[cli].name);
-                }
-                clients.get(message.from).send("SYS", msg.MSG_GETCLIENTS, clientList);
-                break;
+                case msg.MSG_GETCLIENTS:
+                    var clientList = [], cli;
+                    for (cli in clients.clients) {
+                        clientList.push(clients.clients[cli].name);
+                    }
+                    clients.get(message.from).send("SYS", msg.MSG_GETCLIENTS, clientList);
+                    break;
 
-            default:
-                onMessage(message.from, message.to, message.name, message.body);
-                break;
+                default:
+                    onMessage(message.from, message.to, message.name, message.body);
+                    break;
+                }
             }
         });
 
