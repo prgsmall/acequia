@@ -125,11 +125,8 @@ var parseBundle = function (buffer) {
         size = buffer.readUInt32BE(i);
         i += 4;
     
-        packet = "";
-        for (j = 0; j < size; j += 1) {
-            packet += String.fromCharCode(buffer[j + i]);
-        }
-        i += j;
+        packet = buffer.slice(i, i + size);
+        i += size;
         
         msgs = parsePacket(new Buffer(packet));
         

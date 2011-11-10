@@ -9,7 +9,8 @@
 
 var log4js = require('log4js-node'),
     msg = require("./msg.js"),
-    osc = require("./libs/osc.js");
+    osc = require("./libs/osc.js"),
+    Buffer = require('buffer').Buffer;
 
 var TYP_OSC = "OSC",
     TYP_WS = "WEBSOCKET",
@@ -94,7 +95,8 @@ WebSocketClient.prototype.toString = function () {
 /**
  * Defines the client connected to acequia via a direct TCP socket connection
  * @param {String} name The unique user name associated with the client.
- * @param {String} id The id assigned to the connection by the websocket
+ * @param {String} ip The ip address associated with the client.
+ * @param {Integer} portIn The port of the client.
  * @param {Object} server The WebSocketServer that will be used to send the message.
  */
 var TCPClient = function (name, ip, port, server) {
@@ -111,8 +113,14 @@ TCPClient.prototype.equals = function (prot, ip, port) {
 };
 
 TCPClient.prototype.send = function (from, name, body) {
-    var message = new msg.AcequiaMessage(from, name, body);
-    this.server.write(message.toString());
+    var message, buffer;
+    message = new msg.AcequiaMessage(from, name, body);
+    message = message.toString();
+    buffer = new Buffer(4 + message.length);
+    buffer.writeInt32BE(message.length, 0);
+    buffer.write(message, 4);
+
+    this.server.write(buffer);
     this.update();
 };
 

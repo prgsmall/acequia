@@ -165,6 +165,7 @@ function startServers() {
             
             while (index < buffer.length) {
                 size = buffer.readInt32BE(index);
+                logger.debug("message size: %d", size);
                 index += 4;
                 message = buffer.slice(index, index + size);
                 msgs.push(JSON.parse(message));

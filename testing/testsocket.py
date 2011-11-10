@@ -44,18 +44,26 @@ class AcequiaMessageThread(Thread):
         self.stopped = False
         while not self.stopped:
             try:
-                data = self.sock.recv(1024)
+                data = self.sock.recv(4)
                 if not data:
                     print "connection closed"
                     break
-                else:
-                    print data
-                    message = simplejson.loads(data)
-                    
-                    if message["name"] == connectionMessage:
-                        self.sendMessage(newAcequiaMessage("/getClients", []))
-                    elif message["name"] == "/getClients":
-                        self.sendMessage(newAcequiaMessage("/disconnect", []));
+                
+                (size,) = struct.unpack('>L', data)
+                print "message size: %d" % size
+                
+                data = self.sock.recv(size)
+                if not data:
+                    print "connection closed"
+                    break
+
+                print data
+                message = simplejson.loads(data)
+                
+                if message["name"] == connectionMessage:
+                    self.sendMessage(newAcequiaMessage("/getClients", []))
+                elif message["name"] == "/getClients":
+                    self.sendMessage(newAcequiaMessage("/disconnect", []));
 
             except socket.error, e:
                 print e
