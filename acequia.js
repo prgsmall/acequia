@@ -1,23 +1,28 @@
 /*global console process require setInterval*/
 
+
+// TODO:  Listen with http server and serve up the acequia client js file.
+
+// TODO:  At startup compress the acequia client js file, using uglify.
+
+
 // Imports and globals.
 var http = require("http"),
     url = require("url"),
     net = require("net"),
     log4js = require('log4js-node'),
     dgram = require("dgram"),
-    osc = require("./libs/osc.js"),
+    osc = require("./lib/osc.js"),
     ac = require("./client.js"),
     msg = require("./msg.js"),
     querystring = require("querystring"),
     Buffer = require('buffer').Buffer;
 
-var DEBUG = 1,
-    INTERNAL_IP = "0.0.0.0",
-    OSC_PORT = 9090,
-    WS_PORT = 9091,
-    TCP_PORT = 9092,
-    TIMEOUT = 600000; // Seconds before kicking idle clients.
+var INTERNAL_IP = "0.0.0.0",
+    OSC_PORT    = 9090,
+    WS_PORT     = 9091,
+    TCP_PORT    = 9092,
+    TIMEOUT     = 600000; // Seconds before kicking idle clients.
 
 // The list of clients
 var clients = new ac.AcequiaClients(TIMEOUT * 1000);

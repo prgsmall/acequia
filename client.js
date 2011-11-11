@@ -9,7 +9,7 @@
 
 var log4js = require('log4js-node'),
     msg = require("./msg.js"),
-    osc = require("./libs/osc.js"),
+    osc = require("./lib/osc.js"),
     Buffer = require('buffer').Buffer;
 
 var TYP_OSC = "OSC",
