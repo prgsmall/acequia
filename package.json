@@ -1,8 +1,10 @@
-{ "description":"Message router for node.js supporting multiple protocols"
-, "directories":{"doc":"./doc","lib":"./lib/ws"}
-, "engines":{"node":">=0.2.0-0"}
-, "name" : "Acequia"
-, "repository":{"type":"git","url":"http://github.com/miksago/node-websocket-server.git"}
-, "scripts": { "start": "node ./acequia.js" }
-, "version" : "0.5.0"
+{
+"name" : "Acequia"
+,"description":"Message router for node.js supporting multiple protocols"
+, "main": "index"
+, "directories": {"lib": "./lib"}
+, "engines":{"node":">=0.6.0-0"}
+, "repository":{"type":"git","url":"https://prgsmall@github.com/prgsmall/acequia.git"}
+, "scripts": { "start": "node ." }
+, "version" : "0.1.0"
 }
