@@ -1,7 +1,6 @@
-Acequia
--------
+#acequia
 
-node-js message router supporting multiple connection protocols.
+A node-js message router supporting multiple connection protocols.
 
 Currently supports:
     * Open Sound Control (OSC)
