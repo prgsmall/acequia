@@ -1,12 +1,4 @@
 Acequia TODO
 ------------
 
-Change message format.  Messages will always contain:  from: title: body: to:
-
-Add timestamp to the message format
-
-Add a config file to turn on/off the servers.
-
-Create http mailbox server and client.
-
-Create the TCP server for direct socket communication.
+Add namespace to the message object
