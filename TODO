@@ -4,3 +4,6 @@ Acequia TODO
 Add namespace to the message object
 
 Add pub/sub to the clients object
+
+OSCClient.prototype.send = function (message) {
+    // TODO:  convert the message to an OSC message
