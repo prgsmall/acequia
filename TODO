@@ -2,3 +2,5 @@ Acequia TODO
 ------------
 
 Add namespace to the message object
+
+Add pub/sub to the clients object

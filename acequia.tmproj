@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>currentDocument</key>
-	<string>client.js</string>
+	<string>lib/acequia.js</string>
 	<key>documents</key>
 	<array>
 		<dict>
@@ -21,112 +21,102 @@
 	<integer>242</integer>
 	<key>metaData</key>
 	<dict>
-		<key>README</key>
-		<dict>
-			<key>caret</key>
-			<dict>
-				<key>column</key>
-				<integer>7</integer>
-				<key>line</key>
-				<integer>1</integer>
-			</dict>
-			<key>firstVisibleColumn</key>
-			<integer>0</integer>
-			<key>firstVisibleLine</key>
-			<integer>0</integer>
-		</dict>
-		<key>acequia.js</key>
-		<dict>
-			<key>caret</key>
-			<dict>
-				<key>column</key>
-				<integer>95</integer>
-				<key>line</key>
-				<integer>162</integer>
-			</dict>
-			<key>firstVisibleColumn</key>
-			<integer>0</integer>
-			<key>firstVisibleLine</key>
-			<integer>165</integer>
-		</dict>
-		<key>acequiaClient.js</key>
-		<dict>
-			<key>caret</key>
-			<dict>
-				<key>column</key>
-				<integer>55</integer>
-				<key>line</key>
-				<integer>47</integer>
-			</dict>
-			<key>firstVisibleColumn</key>
-			<integer>0</integer>
-			<key>firstVisibleLine</key>
-			<integer>45</integer>
-		</dict>
-		<key>client.js</key>
-		<dict>
-			<key>caret</key>
-			<dict>
-				<key>column</key>
-				<integer>30</integer>
-				<key>line</key>
-				<integer>109</integer>
-			</dict>
-			<key>firstVisibleColumn</key>
-			<integer>0</integer>
-			<key>firstVisibleLine</key>
-			<integer>236</integer>
-		</dict>
-		<key>libs/osc.js</key>
-		<dict>
-			<key>caret</key>
-			<dict>
-				<key>column</key>
-				<integer>22</integer>
-				<key>line</key>
-				<integer>2</integer>
-			</dict>
-			<key>firstVisibleColumn</key>
-			<integer>0</integer>
-			<key>firstVisibleLine</key>
-			<integer>0</integer>
-		</dict>
-		<key>msg.js</key>
-		<dict>
-			<key>caret</key>
-			<dict>
-				<key>column</key>
-				<integer>65</integer>
-				<key>line</key>
-				<integer>5</integer>
-			</dict>
-			<key>firstVisibleColumn</key>
-			<integer>0</integer>
-			<key>firstVisibleLine</key>
-			<integer>0</integer>
-		</dict>
-		<key>testing/client.html</key>
+		<key>TODO</key>
 		<dict>
 			<key>caret</key>
 			<dict>
 				<key>column</key>
 				<integer>35</integer>
 				<key>line</key>
-				<integer>7</integer>
+				<integer>3</integer>
 			</dict>
 			<key>firstVisibleColumn</key>
 			<integer>0</integer>
 			<key>firstVisibleLine</key>
 			<integer>0</integer>
 		</dict>
-		<key>testing/server.js</key>
+		<key>lib/acequia.js</key>
 		<dict>
 			<key>caret</key>
 			<dict>
 				<key>column</key>
-				<integer>41</integer>
+				<integer>29</integer>
 				<key>line</key>
-				<integer>0</integer>
+				<integer>235</integer>
+			</dict>
+			<key>columnSelection</key>
+			<false/>
+			<key>firstVisibleColumn</key>
+			<integer>0</integer>
+			<key>firstVisibleLine</key>
+			<integer>212</integer>
+			<key>selectFrom</key>
+			<dict>
+				<key>column</key>
+				<integer>20</integer>
+				<key>line</key>
+				<integer>235</integer>
+			</dict>
+			<key>selectTo</key>
+			<dict>
+				<key>column</key>
+				<integer>29</integer>
+				<key>line</key>
+				<integer>235</integer>
+			</dict>
+		</dict>
+		<key>lib/client.js</key>
+		<dict>
+			<key>caret</key>
+			<dict>
+				<key>column</key>
+				<integer>28</integer>
+				<key>line</key>
+				<integer>122</integer>
+			</dict>
+			<key>firstVisibleColumn</key>
+			<integer>0</integer>
+			<key>firstVisibleLine</key>
+			<integer>180</integer>
+		</dict>
+		<key>lib/client/acequiaClient.js</key>
+		<dict>
+			<key>caret</key>
+			<dict>
+				<key>column</key>
+				<integer>35</integer>
+				<key>line</key>
+				<integer>205</integer>
+			</dict>
+			<key>columnSelection</key>
+			<false/>
+			<key>firstVisibleColumn</key>
+			<integer>0</integer>
+			<key>firstVisibleLine</key>
+			<integer>159</integer>
+			<key>selectFrom</key>
+			<dict>
+				<key>column</key>
+				<integer>32</integer>
+				<key>line</key>
+				<integer>205</integer>
+			</dict>
+			<key>selectTo</key>
+			<dict>
+				<key>column</key>
+				<integer>35</integer>
+				<key>line</key>
+				<integer>205</integer>
+			</dict>
+		</dict>
+		<key>lib/msg.js</key>
+		<dict>
+			<key>caret</key>
+			<dict>
+				<key>column</key>
+				<integer>59</integer>
+				<key>line</key>
+				<integer>13</integer>
 			</dict>
 			<key>firstVisibleColumn</key>
 			<integer>0</integer>
@@ -136,13 +126,15 @@
 	</dict>
 	<key>openDocuments</key>
 	<array>
-		<string>client.js</string>
-		<string>acequia.js</string>
-		<string>msg.js</string>
+		<string>lib/msg.js</string>
+		<string>TODO</string>
+		<string>lib/client.js</string>
+		<string>lib/client/acequiaClient.js</string>
+		<string>lib/acequia.js</string>
 	</array>
 	<key>showFileHierarchyDrawer</key>
 	<true/>
 	<key>windowFrame</key>
-	<string>{{1937, 87}, {1223, 958}}</string>
+	<string>{{419, 4}, {1028, 1024}}</string>
 </dict>
 </plist>
