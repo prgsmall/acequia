@@ -3,7 +3,9 @@ Acequia TODO
 
 Add namespace to the message object
 
-Add pub/sub to the clients object
-
 OSCClient.prototype.send = function (message) {
     // TODO:  convert the message to an OSC message
+    
+Define OSC messages for connect/disconnect, etc.
+
+rename the msg module to something else.

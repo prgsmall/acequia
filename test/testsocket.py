@@ -17,6 +17,7 @@ class AcequiaMessageThread(Thread):
     def __init__(self):
         Thread.__init__(self)
         self.stopped = False
+
     def sendMessage(self, msg):
         msg = simplejson.dumps(msg)
         slen = struct.pack(">L", len(msg)) 
@@ -63,13 +64,15 @@ class AcequiaMessageThread(Thread):
                 if message["name"] == connectionMessage:
                     self.sendMessage(newAcequiaMessage("/getClients", []))
                 elif message["name"] == "/getClients":
-                    self.sendMessage(newAcequiaMessage("/disconnect", []));
+                    for i in range(0,210):
+                        self.sendMessage(newAcequiaMessage("chewbacca", []));
+                    raise Exception("Message Blast complete")
 
-            except socket.error, e:
+            except Exception, e:
                 print e
                 self.stopped = True
 
-        self.sock.close()
+        self.stopIt();
 
 if __name__ == "__main__":
     acequiaMessageThread = AcequiaMessageThread()

@@ -1,0 +1,80 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<title>tuio</title>
+	<style>
+	    #tuioCanvas {
+	        border: 1px black solid;
+	        border-radius: 6px;
+	        height: 480px;
+	        width: 320px;
+	    }
+	</style>
+</head>
+
+<body>
+    <div id="container">
+        <canvas id="tuioCanvas">
+        </canvas>
+        <button onclick="clearCanvas()">Clear Canvas</button>
+    </div>
+    
+    <script src='http://localhost:9091/acequia/acequia.js'></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js"></script>
+	<script>
+    var canvas;
+    var context;
+    
+	$(document).ready( function(){
+        canvas = document.getElementById('tuioCanvas');
+        context = canvas.getContext('2d');
+    	var ac = new AcequiaClient("http:// :9091", "TUTUTUIO-" + Math.random());
+    	ac.addListener("/tuio/2Dcur/set", onTuio2Dcur);
+        ac.connect();
+    });
+    
+    var started = false;
+    var timeout = null;
+    
+    var onTimeout = function () {
+        started = false;
+        timeout = null;
+    };
+        
+    var clearCanvas = function () {
+        started = false;
+
+        // Store the current transformation matrix
+        context.save();
+
+        // Use the identity matrix while clearing the canvas
+        context.setTransform(1, 0, 0, 1, 0, 0);
+        context.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Restore the transform
+        context.restore();
+    };
+    
+    var onTuio2Dcur = function (mmmmsg) {
+        if (timeout) {
+            clearTimeout(timeout);
+        }
+        var x = parseFloat(mmmmsg.body[1]) * canvas.width;
+        var y = parseFloat(mmmmsg.body[2]) * canvas.height;
+        
+        if (!started) {
+          context.beginPath();
+          context.moveTo(x, y);
+          started = true;
+        } else {
+          context.lineTo(x, y);
+          context.stroke();
+        }
+        timeout = setTimeout(onTimeout, 200);
+    };
+    
+	</script>
+</body>
+
+</html>

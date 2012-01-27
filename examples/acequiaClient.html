@@ -31,11 +31,10 @@
             };
             
             var ac = new AcequiaClient("http://localhost:9091", "user" + Math.random());
-            ac.addMessageListener(msg.MSG_CONNECT, onconnect);
-            ac.addMessageListener(msg.MSG_GETCLIENTS, ongetClients);
-            ac.addMessageListener('*', ontest);
+            ac.addListener(msg.MSG_CONNECT, onconnect);
+            ac.addListener(msg.MSG_GETCLIENTS, ongetClients);
             ac.addConnectionChangeHandler(onconnectionChanged);
-            
+
             $(document).ready( function(){
                 $("button").button();
                 $("#disconnect").button("option", "disabled", true);
