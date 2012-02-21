@@ -10,6 +10,7 @@ Currently supports:
 
 To initialize acequia:
 
+```shell
 git clone git@github.com:prgsmall/acequia.git
 
 cd acequia
@@ -17,3 +18,4 @@ cd acequia
 git submodule init
 
 git submodule update
+```
