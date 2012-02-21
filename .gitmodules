@@ -13,3 +13,6 @@
 [submodule "node_modules/policyfile"]
 	path = node_modules/policyfile
 	url = https://github.com/3rd-Eden/FlashPolicyFileServer.git
+[submodule "node_modules/mdns"]
+	path = node_modules/mdns
+	url = https://github.com/agnat/node_mdns.git
