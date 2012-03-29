@@ -18,26 +18,39 @@
                 alert('Currently connected clients: ' + message.body);
             };
             
-            var ontest = function(message, ac) {
+            var onmessage = function(message, ac) {
                 $("<div></div>")
-                    .html(message.name + " " + message.body)
+                    .html(JSON.stringify(message))
                     .appendTo("#received-messages");
             };
             
             var onconnectionChanged = function (connected) {
                 $("#connect").button("option", "disabled", connected);
-                $("#disconnect").button("option", "disabled", !connected);
                 $("#send").button("option", "disabled", !connected);
             };
             
-            var ac = new AcequiaClient("http://localhost:9091", "user" + Math.random());
-            ac.addListener(msg.MSG_CONNECT, onconnect);
-            ac.addListener(msg.MSG_GETCLIENTS, ongetClients);
+            var ac = new AcequiaClient("user" + Math.random());
+            ac.on(msg.MSG_CONNECT, onconnect);
+            ac.on(msg.MSG_GETCLIENTS, ongetClients);
+            ac.on("test", onmessage);
             ac.addConnectionChangeHandler(onconnectionChanged);
+            
+            var sendMessage = function() {
+                var msgName = $("#sendMessageName").val().trim();
+                if (msgName) {
+                    ac.send(msgName);
+                }
+            };
+            
+            var subscribeMessage = function() {
+                var msgName = $("#subMessageName").val().trim();
+                if (msgName) {
+                    ac.on(msgName, onmessage);
+                }
+            };
 
             $(document).ready( function(){
                 $("button").button();
-                $("#disconnect").button("option", "disabled", true);
                 $("#send").button("option", "disabled", true);
             });
         </script>
@@ -49,10 +62,10 @@
             <td><button id="connect" onclick="ac.connect();">Connect</button></td>
         </tr>
         <tr>
-            <td><button id="disconnect" onclick="ac.disconnect();">Disconnect</button></td>
+            <td><button id="send" onclick="sendMessage();">Send Message</button>&nbsp;<input id="sendMessageName" value="test"/></td>
         </tr>
         <tr>
-            <td><button id="send" onclick="ac.send('test');">Send Test Message</button></td>
+            <td><button id="subscribe" onclick="subscribeMessage();">Subscribe Message</button>&nbsp;<input id="subMessageName" value="test"/></td>
         </tr>
         <tr>
             <td><div id="received-messages" style="border:1px black solid;height:200px;width:500px;"></div></td>
