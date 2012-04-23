@@ -1,1 +1,8 @@
-module.exports = require('./lib/acequia');
+var acequia = require('./lib/acequia');
+
+var start = function () {
+    var acequiaServer = acequia.createServer();
+    acequiaServer.start();
+};
+
+start();

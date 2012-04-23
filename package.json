@@ -1,7 +1,7 @@
 { "name" : "acequia"
 , "version" : "0.1.0"
 , "description":"Message router for node supporting multiple protocols"
-, "main": "lib/acequia.js"
+, "main": "index.js"
 , "preferGlobal": "true"
 , "directories": {"lib": "./lib" }
 , "scripts": { "start": "node ." }
