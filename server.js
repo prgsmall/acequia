@@ -6,7 +6,11 @@ var START = function () {
 };
 
 var start = function () {
-    setTimeout(START, 20000);
+    var timeout = 0;
+    // If you want to debug via node-inspector, uncomment the following line:
+    // timeout = 20000;
+    
+    setTimeout(START, timeout);
 }
 
 start();
