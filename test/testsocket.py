@@ -2,9 +2,10 @@ from threading import Thread, Timer
 import socket
 import simplejson
 import struct
+import time
 
 fromname = "argggghhh"
-connectionMessage = "/connect"
+connectionMessage = "ACEQUIA_CONNECT"
 
 def newAcequiaMessage (name, body):
     return {"from" : fromname,
@@ -20,7 +21,9 @@ class AcequiaMessageThread(Thread):
 
     def sendMessage(self, msg):
         msg = simplejson.dumps(msg)
+        print msg
         slen = struct.pack(">L", len(msg)) 
+        print len(msg)
         self.sock.send(slen + msg)
         
     def stopIt(self):
@@ -62,11 +65,15 @@ class AcequiaMessageThread(Thread):
                 message = simplejson.loads(data)
                 
                 if message["name"] == connectionMessage:
-                    self.sendMessage(newAcequiaMessage("/getClients", []))
-                elif message["name"] == "/getClients":
+                    self.sendMessage(newAcequiaMessage("ACEQUIA_GETCLIENTS", []))
+                elif message["name"] == "ACEQUIA_GETCLIENTS":
                     for i in range(0,210):
                         self.sendMessage(newAcequiaMessage("chewbacca", []));
-                    raise Exception("Message Blast complete")
+                    print "Message Blast complete... sleeping"
+                    time.sleep(10)
+                    self.sendMessage(newAcequiaMessage("bigassmessage", ["eeeeeeeee3e"*1000000]))
+                    print "sent bigassmessage"
+                    raise Exception("All messages complete")
 
             except Exception, e:
                 print e

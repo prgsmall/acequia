@@ -12,6 +12,7 @@
   , "socket.io-client":">=0.9.6"
   , "uglify-js": ">=1.2.5"
   , "mdns" : "0.0.x"
+  , "buffertools" : ">=1.0.9" 
   } 
 , "homepage": "https://github.com/prgsmall/acequia"
 , "repository": 
