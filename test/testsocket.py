@@ -73,6 +73,7 @@ class AcequiaMessageThread(Thread):
                     time.sleep(10)
                     self.sendMessage(newAcequiaMessage("bigassmessage", ["eeeeeeeee3e"*1000000]))
                     print "sent bigassmessage"
+                    self.sendMessage(newAcequiaMessage("theAfterMessage", []));
                     raise Exception("All messages complete")
 
             except Exception, e:
