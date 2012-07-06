@@ -25,7 +25,9 @@
             };
             
             var onconnectionChanged = function (connected) {
+                $("#connected").html(connected.toString());
                 $("#connect").button("option", "disabled", connected);
+                $("#disconnect").button("option", "disabled", !connected);
                 $("#send").button("option", "disabled", !connected);
             };
             
@@ -52,6 +54,7 @@
             $(document).ready( function(){
                 $("button").button();
                 $("#send").button("option", "disabled", true);
+                $("#disconnect").button("option", "disabled", true);
             });
         </script>
     </head>
@@ -59,10 +62,13 @@
     <body>
     <table>
         <tr>
+            <td>Connected: <span id="connected">false</span></td>
+        </tr>
+        <tr>
             <td><button id="connect" onclick="ac.connect();">Connect</button></td>
         </tr>
         <tr>
-            <td><button id="connect" onclick="ac.disconnect();">Disconnect</button></td>
+            <td><button id="disconnect" onclick="ac.disconnect();">Disconnect</button></td>
         </tr>
         <tr>
             <td><button id="send" onclick="sendMessage();">Send Message</button>&nbsp;<input id="sendMessageName" value="test"/></td>
