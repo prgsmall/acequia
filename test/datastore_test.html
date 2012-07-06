@@ -1,0 +1,95 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<title>rest_test</title>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+</head>
+
+<body>
+<button onclick="get_it()">GET</button>
+<button onclick="post_it()">POST</button>
+<button onclick="put_it()">PUT</button>
+<button onclick="delete_it()">DELETE</button>
+
+<script>
+var get_it = function () {
+    $.ajax({
+        url: "/datastore/products/BLACKTEESHIRT", 
+        type: "GET",
+        success: function (data, textStatus, jqXHR) {
+            console.log("GET response:");
+            console.dir(data);
+            console.log(textStatus);
+            console.dir(jqXHR);
+        },
+        error: function(jqXHR, error) {
+            console.log("GET error:");
+            console.dir(JSON.parse(jqXHR.responseText));
+        }
+    });  
+};
+
+var post_it = function () {
+    $.ajax({
+        url: "/datastore/products/BLACKTEESHIRT",
+        type:  "POST",
+        data: {
+            "title": "My Awesome T-shirt",
+            "description": "All about the details. Of course it's black.",
+            "style": "12345"
+        },
+        success: function (data, textStatus, jqXHR) {
+            console.log("POST response:"); 
+            console.dir(data); 
+            console.log(textStatus); 
+            console.dir(jqXHR);
+        },
+        error: function(jqXHR, error) {
+            console.log("POST error:");
+            console.dir(JSON.parse(jqXHR.responseText));
+        }
+    });    
+};
+
+var put_it = function () {
+    $.ajax({
+        url: "/datastore/products/BLACKTEESHIRT",
+        type: "PUT",
+        data: {
+          "title": "My Awesome T-shirt in Black",
+          "description": "All about the details. Of course it's black, and long sleeve",
+          "style": "12345"
+        },
+        success: function (data, textStatus, jqXHR) {
+            console.log("PUT response:");
+            console.dir(data);
+            console.log(textStatus);
+            console.dir(jqXHR);
+        },
+        error: function(jqXHR, error) {
+            console.log("PUT error:");
+            console.dir(JSON.parse(jqXHR.responseText));
+        }
+    });
+};
+
+var delete_it = function () {
+    $.ajax({
+        url: "/datastore/products/BLACKTEESHIRT", 
+        type: "DELETE",
+        success: function (data, textStatus, jqXHR) { 
+            console.log("DELETE response:"); 
+            console.dir(data); 
+            console.log(textStatus); 
+            console.dir(jqXHR); 
+        },
+        error: function(jqXHR, error) {
+            console.log("DELETE error:");
+            console.dir(JSON.parse(jqXHR.responseText));
+        }
+    });
+}
+
+</script
+</body>
+</html>
