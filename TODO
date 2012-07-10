@@ -1,11 +1,11 @@
 Acequia TODO
 ------------
 
-Add namespace to the message object
-
-OSCClient.prototype.send = function (message) {
-    // TODO:  convert the message to an OSC message
     
 Define OSC messages for connect/disconnect, etc.
 
 rename the msg module to something else.
+
+Add mdns back to package.json
+    , "mdns" : ">=0.0.7"
+    

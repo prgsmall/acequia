@@ -8,11 +8,10 @@
 , "engines": { "node": ">=0.6" }
 , "dependencies" : 
   { "log4js" : ">=0.4.1"
-  , "express": "2.5.8"
+  , "express": ">=2.5.8"
   , "socket.io": ">=0.9.6"
   , "socket.io-client":">=0.9.6"
   , "uglify-js": ">=1.2.5"
-  , "mdns" : "0.0.x"
   , "buffertools" : ">=1.0.9" 
   } 
 , "homepage": "https://github.com/prgsmall/acequia"
