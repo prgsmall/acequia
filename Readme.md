@@ -1,19 +1,19 @@
 #acequia
 
-A node-js message router supporting multiple connection protocols.
+A node-js message router supporting multiple connection protocols and a persistent data store.  The persistent datastore is also accessible through a REST interface.  Acequia can be run as a stand-alone server or integrated into your express.js web application.
 
-Currently supports:
+The messaging server currently supports the following connection protocols:
 
-* Open Sound Control (OSC)
 * WebSockets via socket.io
+* UDP connection using the Open Sound Control protocol
 * TCP connection
 
-To initialize acequia:
+## To install acequia:
 
 ```shell
 git clone git@github.com:prgsmall/acequia.git
 
 cd acequia
 
-npm install
+npm install # To install all of the submodules
 ```
