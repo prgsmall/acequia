@@ -8,7 +8,7 @@ The messaging server currently supports the following connection protocols:
 * UDP connection using the Open Sound Control protocol
 * TCP connection
 
-## Installing acequia
+## Installation
 
 To install acequia, type the following into a command shell:
 
@@ -17,6 +17,8 @@ git clone git@github.com:prgsmall/acequia.git
 cd acequia
 npm install             # This installs all of the required submodules of acequia
 ```
+
+If you wish to integrate acequia into your express.js app, simply add it to your package.json.
 
 ## Starting acequia
 To start acequia as a stand alone server with all of the default values, type the following:
