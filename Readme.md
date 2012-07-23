@@ -8,7 +8,9 @@ The messaging server currently supports the following connection protocols:
 * UDP connection using the Open Sound Control protocol
 * TCP connection
 
-## To install acequia:
+## Installing acequia
+
+To install acequia:
 
 ```shell
 git clone git@github.com:prgsmall/acequia.git
