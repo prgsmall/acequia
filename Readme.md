@@ -10,12 +10,17 @@ The messaging server currently supports the following connection protocols:
 
 ## Installing acequia
 
-To install acequia:
+To install acequia, type the following into a command shell:
 
 ```shell
 git clone git@github.com:prgsmall/acequia.git
-
 cd acequia
+npm install             # This installs all of the required submodules of acequia
+```
 
-npm install # To install all of the submodules
+## Starting acequia
+To start acequia as a stand alone server with all of the default values, type the following:
+```shell
+cd acequia
+node ./server.js
 ```
