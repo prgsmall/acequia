@@ -3,6 +3,7 @@
 <head>
 	<title>rest_test</title>
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+	<script src='http://localhost:9091/acequia/acequia.js'></script>
 </head>
 
 <body>
@@ -12,26 +13,27 @@
 <button onclick="delete_it()">DELETE</button>
 
 <script>
+var  base_url = "http://localhost:9091";
+
 var get_it = function () {
     $.ajax({
-        url: "/datastore/products/BLACKTEESHIRT", 
+        url: base_url + "/datastore/products/BLACKTEESHIRT", 
         type: "GET",
         success: function (data, textStatus, jqXHR) {
             console.log("GET response:");
-            console.dir(data);
+            console.debug(data);
             console.log(textStatus);
-            console.dir(jqXHR);
+            console.debug(jqXHR);
         },
         error: function(jqXHR, error) {
-            console.log("GET error:");
-            console.dir(JSON.parse(jqXHR.responseText));
+            console.error("GET error:  " + jqXHR.statusText);
         }
     });  
 };
 
 var post_it = function () {
     $.ajax({
-        url: "/datastore/products/BLACKTEESHIRT",
+        url: base_url + "/datastore/products/BLACKTEESHIRT",
         type:  "POST",
         data: {
             "title": "My Awesome T-shirt",
@@ -40,21 +42,20 @@ var post_it = function () {
         },
         success: function (data, textStatus, jqXHR) {
             console.log("POST response:"); 
-            console.dir(data); 
+            console.debug(data); 
             console.log(textStatus); 
-            console.dir(jqXHR);
+            console.debug(jqXHR);
         },
         error: function(jqXHR, error) {
-            console.log("POST error:");
-            console.dir(JSON.parse(jqXHR.responseText));
+            console.error("POST error:  " + jqXHR.statusText);
         }
     });    
 };
 
 var put_it = function () {
     $.ajax({
-        url: "/datastore/products/BLACKTEESHIRT",
-        type: "PUT",
+        url: base_url + "/datastore/products/BLACKTEESHIRT",
+        type:  "PUT",
         data: {
           "title": "My Awesome T-shirt in Black",
           "description": "All about the details. Of course it's black, and long sleeve",
@@ -62,33 +63,43 @@ var put_it = function () {
         },
         success: function (data, textStatus, jqXHR) {
             console.log("PUT response:");
-            console.dir(data);
+            console.debug(data);
             console.log(textStatus);
-            console.dir(jqXHR);
+            console.debug(jqXHR);
         },
         error: function(jqXHR, error) {
-            console.log("PUT error:");
-            console.dir(JSON.parse(jqXHR.responseText));
+            console.error("PUT error:  " + jqXHR.statusText);
         }
     });
 };
 
 var delete_it = function () {
     $.ajax({
-        url: "/datastore/products/BLACKTEESHIRT", 
-        type: "DELETE",
+        url: base_url + "/datastore/products/BLACKTEESHIRT", 
+        type:  "DELETE",
         success: function (data, textStatus, jqXHR) { 
             console.log("DELETE response:"); 
-            console.dir(data); 
+            console.debug(data); 
             console.log(textStatus); 
-            console.dir(jqXHR); 
+            console.debug(jqXHR); 
         },
         error: function(jqXHR, error) {
-            console.log("DELETE error:");
-            console.dir(JSON.parse(jqXHR.responseText));
+            console.error("DELETE error:  " + jqXHR.statusText);
         }
     });
 }
+
+var ac, cs;
+
+$(document).ready( function(){
+    ac = new AcequiaClient();
+    cs = ac.createClientStore("/products/");
+    cs.on("value", function(message) {
+        alert(JSON.stringify(message));
+    });
+    ac.connect();
+});
+
 
 </script
 </body>
