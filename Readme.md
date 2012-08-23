@@ -1,3 +1,4 @@
+[![build status](https://secure.travis-ci.org/prgsmall/acequia.png)](http://travis-ci.org/prgsmall/acequia)
 #acequia
 
 A node-js message router supporting multiple connection protocols and a persistent data store.  The persistent datastore is also accessible through a REST interface.  Acequia can be run as a stand-alone server or integrated into your express.js web application.
