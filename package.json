@@ -8,7 +8,7 @@
 , "engines": { "node": ">=0.6" }
 , "dependencies" : 
   { "log4js" : "0.6.x"
-  , "express": "3.1.x"
+  , "express": ">=3.11.0"
   , "socket.io": ">=0.9.6"
   , "socket.io-client":">=0.9.6"
   , "uglify-js": ">=1.2.5"
